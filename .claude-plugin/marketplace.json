@@ -1,0 +1,18 @@
+{
+  "name": "kensa-marketplace",
+  "metadata": {
+    "description": "AI coding agent skills for the Kensa BDD framework",
+    "version": "0.7.1"
+  },
+  "owner": {
+    "name": "kensa-dev",
+    "url": "https://kensa.dev"
+  },
+  "plugins": [
+    {
+      "name": "kensa",
+      "source": "./plugins/kensa",
+      "description": "Kensa BDD framework for Kotlin/Java — Given-When-Then in code"
+    }
+  ]
+}

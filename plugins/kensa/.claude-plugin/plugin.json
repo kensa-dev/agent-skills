@@ -1,0 +1,9 @@
+{
+  "name": "kensa",
+  "description": "Kensa BDD framework for Kotlin/Java — Given-When-Then in code",
+  "version": "0.7.1",
+  "author": {
+    "name": "kensa-dev",
+    "url": "https://kensa.dev"
+  }
+}
