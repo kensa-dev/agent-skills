@@ -21,6 +21,12 @@ Gherkin). It parses test source via ANTLR to render sentences in HTML reports. *
 report shows actual source tokens in test bodies and `@ExpandableSentence` bodies — so everything
 in those rendered contexts must read as fluent English.**
 
+**The audience is non-developers.** BAs, testers, and product owners read these reports to verify
+behaviour and design future APIs. The test body must read as domain prose. Per-invocation render
+cost also scales with the AST in those contexts — bigger test bodies mean slower reports.
+Readability and performance pull the same way; every best practice below keeps the body small,
+semantic, and free of structural detail.
+
 ## KensaTest Interface
 
 Test classes implement `KensaTest`, which provides the Given-When-Then DSL and direct access to
@@ -43,7 +49,7 @@ Read these files only when the relevant topic appears in the test being reviewed
 | `SetupStep`, `SetupSteps`, `KotestSetupStep`, `buildGivens`, `buildActions`, `@UseSetupStrategy` | `references/setup-steps.md` |
 | `FixtureContainer`, multi-dependency fixtures, `givens[...]` | `references/fixtures.md` |
 | `CapturedOutputContainer`, `capturedOutput<T>`, `outputs[key]`, `registerCapturedOutputs` | `references/captured-outputs.md` |
-| `@RenderedValue`, `@RenderedValueWithHint`, `@RenderedValueContainer`, `@Issue`, `@Notes` | `references/rendered-value.md` |
+| `@RenderedValue`, `@RenderedValueWithHint`, `@RenderedValueContainer`, `@ExpandableRenderedValue`, `@Issue`, `@Notes` | `references/rendered-value.md` |
 
 ## The Best Practices
 
@@ -263,6 +269,79 @@ class OrderCancellationTest : MyDomainTest(), WithPaymentScenario, WithNotificat
 Flag any test that puts stub/service references directly in the superclass, or that duplicates
 scenario helper logic across test classes, as a violation of this pattern.
 
+### BP-7: Many assertions are fine — walls of inline `shouldBe` are not
+
+Complex messages and mapping tables are real. Testers and POs *do* check specific field values to
+verify behaviour and design future APIs. The discipline isn't "fewer assertions" — it's:
+
+1. Keep the test body's AST small regardless of assertion count.
+2. Treat repeated `shouldBe` shapes as a DRY violation — each repetition is a missing matcher.
+3. Decide what each field deserves: domain-important on its own (named matcher) or one of many
+   attributes where the collection itself is the unit of meaning (`@ExpandableRenderedValue`).
+
+**Bad** — validation DSL inline in the body. Every `item { shouldBe(...) }` is parsed and rendered;
+the report ends up 9 levels deep with dozens of lambdas:
+
+```kotlin
+then(courier {
+    hasDispatched {
+        shipment {
+            consignee {
+                address {
+                    item(name = "PostCode")    { shouldBe(fixtures { PostCodeFx }) }
+                    item(name = "CountryCode") { shouldBe(fixtures { CountryCodeFx }) }
+                    item(name = "ServiceLevel"){ shouldBe(fixtures { ServiceLevelFx }) }
+                    // ...30 more
+                }
+            }
+        }
+    }
+})
+```
+
+**Good** — flat call into a matcher DSL defined elsewhere:
+
+```kotlin
+then(courier.hasDispatched(aShipment(
+    thatHas(
+        aPostCode     of fixtures[PostCodeFx],
+        aCountryCode  of fixtures[CountryCodeFx],
+        aServiceLevel of fixtures[ServiceLevelFx],
+        // flat field-value pairs
+    )
+)))
+```
+
+`thatHas`, `aPostCode`, `of`, `aShipment` live in helper modules. Kensa doesn't recurse into them;
+each assertion costs one parsed token in the body. The report reads as one sentence and POs can
+still scan the field list.
+
+**When fields aren't domain-important — use `@ExpandableRenderedValue`.** Sometimes a message has
+30 fields where no single one stands on its own; what matters is verifying the full set. The
+method does the comparison; only its return value (a list/set/map) is rendered:
+
+```kotlin
+@ExpandableRenderedValue(renderAs = Tabular, headers = ["Field", "Expected"])
+private fun theShipmentFields() = listOf(
+    "PostCode"     to fixtures[PostCodeFx],
+    "CountryCode"  to fixtures[CountryCodeFx],
+    "ServiceLevel" to fixtures[ServiceLevelFx],
+    // ...
+)
+
+// In a test:
+then(courier.hasDispatched(aShipmentWith(theShipmentFields())))
+```
+
+Report shows a labelled table; body stays a single line. See `references/rendered-value.md`.
+
+**Spotting it during review:**
+- Nesting depth >3 inside `then` / `whenever` / `given`
+- More than 3 inline `shouldBe` / `shouldNotBe` in a single test body
+- The same `item(name = ...) { shouldBe(...) }` shape repeated more than twice
+
+Each is a cue to extract a flat matcher DSL.
+
 ---
 
 ## How to Review
@@ -286,6 +365,7 @@ to make fixtures and request builders realistic and type-accurate.
 1. [BP-2] `aClientSubmitsAnLcApplicationFor` is @ExpandableSentence returning an Action — lambda body rendered when expanded
 2. [BP-3] `Holder` carries test data (applicantId, expectedPrefix) — should be Fixtures
 3. [BP-5] `shouldBeInstanceOf<LcApplicationResult.Approved>()` exposed in rendered then() block
+4. [BP-7] `then` block nests 7 levels deep with 30+ inline `item { shouldBe(...) }` — extract a flat matcher DSL (`thatHas(field of value, ...)`)
 
 ## Improved Test
 

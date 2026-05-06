@@ -57,6 +57,64 @@ private fun verifyLcWasApprovedWith(@RenderedValue expectedPrefix: String) {
 }
 ```
 
+## @ExpandableRenderedValue
+
+Renders **only the return value** of a method (or property/parameter) — the body is hidden. Use
+when many fields need verification but they aren't individually meaningful as named matchers; the
+data *itself* is the unit of meaning. The method may also perform comparison work; only the return
+value reaches the report.
+
+```kotlin
+annotation class ExpandableRenderedValue(
+    val renderAs: RenderedValueStyle = Default,
+    val headers: Array<String> = []
+)
+```
+
+### Default style
+
+Renders the return value via its registered renderer. If the value is iterable, the renderer is
+invoked on each item and items appear as a flat list:
+
+```kotlin
+@ExpandableRenderedValue
+private fun theDispatchedLifecycle(): List<DispatchStatus> =
+    listOf(ACKNOWLEDGED, COMMITTED, DISPATCHED, DELIVERED)
+
+// In a test:
+then(theShipment(), shouldFollowLifecycle(theDispatchedLifecycle()))
+```
+
+The report shows the lifecycle list inline; the helper body is not rendered.
+
+### Tabular style
+
+Renders the return value as a labelled table. Default table renderer: an `Iterable<Pair<*, *>>`
+becomes two-column rows. Provide explicit `headers`; register a custom `TableRenderer<T>` for
+richer shapes.
+
+```kotlin
+@ExpandableRenderedValue(renderAs = Tabular, headers = ["Field", "Expected"])
+private fun theShipmentFields(): List<Pair<String, String>> = listOf(
+    "PostCode"     to fixtures[PostCodeFx],
+    "CountryCode"  to fixtures[CountryCodeFx],
+    "ServiceLevel" to fixtures[ServiceLevelFx],
+)
+
+// In a test:
+then(courier.hasDispatched(aShipmentWith(theShipmentFields())))
+```
+
+The report shows a two-column table; the test body stays a single line.
+
+### Choosing between matcher and `@ExpandableRenderedValue`
+
+| Need | Use |
+|---|---|
+| Field is domain-important on its own | Named matcher (`aPostCode of value`) |
+| Many fields, collection is the unit of meaning | `@ExpandableRenderedValue` |
+| Same plus a labelled table in the report | `@ExpandableRenderedValue(renderAs = Tabular)` |
+
 ## @RenderedValueWithHint
 
 Use for wrapper types (e.g. `JsonPath`, `XmlPath`) that should show the identifier name in
