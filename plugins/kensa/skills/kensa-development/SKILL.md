@@ -336,9 +336,13 @@ then(courier.hasDispatched(aShipmentWith(theShipmentFields())))
 Report shows a labelled table; body stays a single line. See `references/rendered-value.md`.
 
 **Spotting it during review:**
-- Nesting depth >3 inside `then` / `whenever` / `given`
-- More than 3 inline `shouldBe` / `shouldNotBe` in a single test body
-- The same `item(name = ...) { shouldBe(...) }` shape repeated more than twice
+- Inline lambda blocks containing `shouldBe` / `shouldNotBe` inside `then` / `whenever` / `given`
+- The same `item(name = ...) { shouldBe(...) }` (or equivalent) shape repeated more than twice
+- A nested validation DSL where intermediate levels add no semantic meaning — just structural braces
+
+Depth alone is not the signal. A flat `thatHas(field of value, ...)` chain that reads as English
+is fine at any depth — every layer (`thenEventually`, `thatHas`, `.and(...)`) is a named, fluent
+step. Nested raw lambdas and repeated identical shapes are the problem.
 
 Each is a cue to extract a flat matcher DSL.
 
