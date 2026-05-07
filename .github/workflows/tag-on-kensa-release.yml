@@ -1,0 +1,37 @@
+name: Tag on Kensa Release
+
+# Tags this repo with the matching Kensa version when Kensa publishes a release.
+# Triggered by repository_dispatch (event-type: kensa-released) sent from
+# kensa-dev/kensa's publish workflow.
+
+on:
+  repository_dispatch:
+    types: [kensa-released]
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create matching tag
+        env:
+          VERSION: ${{ github.event.client_payload.version }}
+        run: |
+          set -euo pipefail
+          if [ -z "$VERSION" ]; then
+            echo "client_payload.version is empty"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists; skipping"
+            exit 0
+          fi
+          git tag -a "$VERSION" -m "Kensa $VERSION"
+          git push origin "$VERSION"
