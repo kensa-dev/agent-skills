@@ -1,0 +1,13 @@
+{
+  "evals": [
+    {
+      "eval_id": 0,
+      "eval_name": "inventory-reservation-kage-acceptance",
+      "prompt_file": "inventory-reservation/brief.md",
+      "instruction": "Author a Kage acceptance test for the behaviour described in this brief. Place the generated scenario + in-process runner into the kage-acceptance test sources of the provided checkout.",
+      "input_paths": {
+        "kage_acceptance_checkout": "<set locally to a kage-branch checkout of kensa-dev/kensa; do not commit an absolute path>"
+      }
+    }
+  ]
+}
