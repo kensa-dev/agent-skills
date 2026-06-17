@@ -12,6 +12,29 @@ fixtures — see Rule 3.
 
 ---
 
+## Rule 0 — Imports: get these exact (do not guess packages)
+
+Wrong packages are the most common *compile* failure. The fixture DSL lives under
+`dev.kensa.fixture`, **not** `dev.kensa`. Mirror the exact imports of any existing fixtures/helpers
+seen during introspect; when in doubt use these canonical imports, and **never import a package**
+(`import dev.kensa.fixture` is wrong — import the function or type):
+
+```kotlin
+import dev.kensa.fixture.FixtureContainer
+import dev.kensa.fixture.fixture
+import dev.kensa.fixture.FixtureRegistry.registerFixtures
+import dev.kensa.RenderedValue
+import dev.kensa.ExpandableSentence
+// MatcherField (hamkrest variant — match what introspect reported):
+import dev.kensa.hamkrest.testsupport.field.json.JsonIntField
+import dev.kensa.hamkrest.testsupport.field.json.JsonTextField
+import dev.kensa.hamkrest.testsupport.field.of
+import com.natpryce.hamkrest.and
+import com.natpryce.hamkrest.assertion.assertThat
+```
+
+---
+
 ## Rule 1 — Two-file shape
 
 Emit exactly two files per behaviour.
