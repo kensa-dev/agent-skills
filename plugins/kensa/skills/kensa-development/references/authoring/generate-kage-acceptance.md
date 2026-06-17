@@ -112,7 +112,8 @@ uses in that project.)
 A `then` of the form "field X equals Y" becomes a typed `MatcherField` — a `JsonField` variant
 (`JsonIntField` / `JsonTextField`, or `XmlField` for XML) — declared as a property, concatenated
 with `of fixtures(...)` and combined with `and (...)`. **NEVER assert with whole-body JSON-string
-equality or xmlunit.** The matcher-field types (the `MatcherField|JsonField` family) live under
+equality or xmlunit.** `MatcherField` is the abstract base; the concrete types (`JsonIntField`,
+`JsonTextField`, and the `JsonField` family broadly) live under
 `dev.kensa.hamkrest.testsupport.field.json.*`.
 
 Import the variant the inventory reports — the golden uses hamkrest:
@@ -204,9 +205,9 @@ quick reference).
 
 ## Rule 7 — Stubs, participants & wiring
 
-Reuse the inventory's existing stub infrastructure (the `trackingClient|priming` helpers):
-`trackingClient(tid, …)` and the priming step. If none exists, add a minimal one next to the
-existing pattern. The golden's tracking client and HTTP priming step:
+Reuse the inventory's existing stub infrastructure: the `trackingClient` wrapper and the priming
+step. If neither exists, add a minimal one next to the existing pattern. The golden's tracking
+client and HTTP priming step:
 
 ```kotlin
 fun anOrderService(): Action<GivensContext> = Action { _ ->
@@ -216,9 +217,12 @@ fun anOrderService(): Action<GivensContext> = Action { _ ->
 
 fun primeSupplierToConfirmReservation(reservationId: String, quantity: Int): Action<GivensContext> = Action { _ ->
     val response = JavaHttpClient()(
-        Request(POST, "${kageBaseUri.toString().trimEnd('/')}/http-stub/prime/${trackingId.asString}").body(...)
+        Request(POST, "${kageBaseUri.toString().trimEnd('/')}/http-stub/prime/${trackingId.asString}")
+            .body(/* JSON stub response body */)
     )
-    check(response.status == Status.NO_CONTENT) { "Priming failed with status ${response.status}: ..." }
+    check(response.status == Status.NO_CONTENT) {
+        "Priming failed with status ${response.status}: ${response.bodyString()}"
+    }
 }
 ```
 
@@ -255,7 +259,11 @@ Always tear down in `@AfterEach`:
 
 ```kotlin
 @AfterEach
-fun tearDown() { diagramCapture?.close(); subscription?.close(); server.stop() }
+fun tearDown() {
+    diagramCapture?.close()
+    subscription?.close()
+    server.stop()
+}
 ```
 
 ---
