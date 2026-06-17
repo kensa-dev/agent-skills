@@ -7,6 +7,9 @@ description: >
   DSL, @RenderedValue, @ExpandableSentence, Fixtures, and produce HTML reports with sequence diagrams.
   Trigger for: "review this test", "improve this Kensa test", "what's wrong with this test",
   "make this test more idiomatic", or any time a user pastes Kensa test code.
+  Also AUTHORS new Kensa tests from requirements: trigger for "write a Kensa test for…",
+  "author a test that…", "generate a Kage acceptance test from this brief/ticket", or when given
+  a Given/When/Then brief (inline or a .md file) for a Kensa project.
 ---
 
 # Kensa Test Reviewer
@@ -26,6 +29,21 @@ behaviour and design future APIs. The test body must read as domain prose. Per-i
 cost also scales with the AST in those contexts — bigger test bodies mean slower reports.
 Readability and performance pull the same way; every best practice below keeps the body small,
 semantic, and free of structural detail.
+
+## Intent Router
+
+Decide which mode you are in before doing anything else:
+
+- **Review** — the user shared an existing test and wants critique/improvement.
+  Continue with the best-practice rules below (the reviewer flow). This is the default
+  when test code is present and no authoring request is made.
+- **Author** — the user wants a NEW test written from requirements (a brief, a ticket,
+  a Given/When/Then description, or "write a test that…"). Follow
+  `references/authoring/overview.md`, which runs a four-phase pipeline and reuses the
+  best-practice rules below as a self-review pass.
+
+If both could apply (e.g. "rewrite this test to also cover X"), prefer Author — you are
+producing new test code — but run the review rules over the result.
 
 ## KensaTest Interface
 
@@ -50,6 +68,7 @@ Read these files only when the relevant topic appears in the test being reviewed
 | `FixtureContainer`, multi-dependency fixtures, `givens[...]` | `references/fixtures.md` |
 | `CapturedOutputContainer`, `capturedOutput<T>`, `outputs[key]`, `registerCapturedOutputs` | `references/captured-outputs.md` |
 | `@RenderedValue`, `@RenderedValueWithHint`, `@RenderedValueContainer`, `@ExpandableRenderedValue`, `@Issue`, `@Notes` | `references/rendered-value.md` |
+| Authoring a test from a brief / requirements / ticket | `references/authoring/overview.md` |
 
 ## The Best Practices
 
