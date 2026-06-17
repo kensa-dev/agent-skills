@@ -5,7 +5,7 @@ participants:
   - Supplier       (stub/supplier, primed via http-stub)
 
 given:
-  - the supplier is primed to confirm a reservation for reference "stock-ref-1"
+  - the supplier is primed to confirm a reservation
     returning JSON { "reservationId": "RES-1", "status": "RESERVED", "quantity": 5 }
 
 when:
