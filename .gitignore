@@ -2,3 +2,6 @@
 .idea/
 .vscode/
 *.swp
+
+# skill-creator eval run artifacts (regenerable per iteration)
+plugins/kensa/skills/kensa-development-workspace/

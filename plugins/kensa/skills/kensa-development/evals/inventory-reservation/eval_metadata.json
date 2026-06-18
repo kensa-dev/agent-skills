@@ -1,0 +1,12 @@
+{
+  "eval_id": 0,
+  "eval_name": "inventory-reservation-kage-acceptance",
+  "expectations": [
+    { "text": "Generated test compiles and passes in-process (assert_compiles_and_passes.sh exits 0)" },
+    { "text": "Generated scenario is structurally idiomatic (assert_structure.sh exits 0)" },
+    { "text": "Generated test passes the kensa-development reviewer with zero violations (assert_reviewer_clean.sh exits 0)" },
+    { "text": "Supplier reference, item code and quantity are sourced from Fixtures, not inline literals" },
+    { "text": "Request body asserted field-by-field via JsonField MatcherField, not whole-body JSON/XML comparison" },
+    { "text": "The CONFIRMED outcome uses thenEventually (asynchronous), per the brief's timing" }
+  ]
+}
