@@ -1,5 +1,6 @@
 package dev.kensa.example.kage
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.natpryce.hamkrest.and
 import com.natpryce.hamkrest.assertion.assertThat
 import dev.kensa.ExpandableSentence
@@ -78,14 +79,10 @@ class InProcessInventoryReservationTest : KensaTest, WithKotest {
         whenever(scenario.placingAnOrderFor(quantity = fixtures(ReservationQuantityFx), item = fixtures(CatalogueItemFx)))
 
         then(scenario.theReservationRequestBody()) {
-            assertThat(
-                this,
-                aQuantityField of fixtures(ReservationQuantityFx)
-                    and (anItemField of fixtures(CatalogueItemFx))
-            )
+            requestsReservationOf(fixtures(ReservationQuantityFx), fixtures(CatalogueItemFx))
         }
 
-        thenEventually(scenario.theOrderStatus()) { this shouldBe OrderStatus.CONFIRMED }
+        thenEventually(scenario.theOrderStatus()) { shouldBeConfirmed() }
 
         then(scenario.theReservationResponse()) {
             theReservationResponseShows(reservationId, status, quantity)
@@ -101,6 +98,14 @@ class InProcessInventoryReservationTest : KensaTest, WithKotest {
         reservationId shouldBe fixtures(ReservationIdFx)
         status shouldBe "RESERVED"
         quantity shouldBe fixtures(ReservationQuantityFx)
+    }
+
+    private fun JsonNode.requestsReservationOf(quantity: Int, item: String) {
+        assertThat(this, aQuantityField of quantity and (anItemField of item))
+    }
+
+    private fun OrderStatus.shouldBeConfirmed() {
+        this shouldBe OrderStatus.CONFIRMED
     }
 
     private val aQuantityField: JsonIntField get() = JsonIntField("/quantity")

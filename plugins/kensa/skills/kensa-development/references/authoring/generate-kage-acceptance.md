@@ -155,15 +155,16 @@ private val aQuantityField: JsonIntField get() = JsonIntField("/quantity")
 private val anItemField: JsonTextField get() = JsonTextField("/item")
 ```
 
-Used in the body — one fluent matcher, the brief's two `then` clauses joined with `and`:
+The raw `assertThat(...) … of … and (…)` flow does **not** go inline in the rendered body — wrap it
+in a named semantic matcher (Rule 9). The golden's matcher and its call:
 
 ```kotlin
+private fun JsonNode.requestsReservationOf(quantity: Int, item: String) {
+    assertThat(this, aQuantityField of quantity and (anItemField of item))
+}
+
 then(scenario.theReservationRequestBody()) {
-    assertThat(
-        this,
-        aQuantityField of fixtures(ReservationQuantityFx)
-            and (anItemField of fixtures(CatalogueItemFx))
-    )
+    requestsReservationOf(fixtures(ReservationQuantityFx), fixtures(CatalogueItemFx))
 }
 ```
 
@@ -213,12 +214,13 @@ Map the brief's `[timing: ...]` tag to the DSL, always using the trailing-lambda
 | `eventually` | `thenEventually(...) { ... }` |
 | `continually` | `thenContinually(...) { ... }` |
 
-The golden's `immediate` field check and `eventually` status check:
+The golden's `immediate` field check and `eventually` status check (each wrapped in a named
+semantic matcher per Rule 9 — never raw `assertThat`/`shouldBe` inline):
 
 ```kotlin
-then(scenario.theReservationRequestBody()) { assertThat(this, ...) }
+then(scenario.theReservationRequestBody()) { requestsReservationOf(...) }
 
-thenEventually(scenario.theOrderStatus()) { this shouldBe OrderStatus.CONFIRMED }
+thenEventually(scenario.theOrderStatus()) { shouldBeConfirmed() }
 ```
 
 Never put a timeout duration literal in the body — push it into a private function (SKILL.md, DSL
@@ -303,7 +305,7 @@ pattern.
 
 ---
 
-## Rule 9 — Rendered prose discipline
+## Rule 9 — Rendered prose discipline (named semantic matchers)
 
 The `@Test` body and `@ExpandableSentence` bodies must read as fluent English (defer to the BP
 rules in `SKILL.md` — no `val` assignments, no loops, no raw matchers, no qualifier prefixes in the
@@ -315,15 +317,36 @@ fun theReservationResponse(): StateCollector<ReservationConfirmation> = StateCol
 }
 ```
 
-`theReservationResponse()`, not `theCapturedReservationResponse()`. The result is a body that reads
-straight through:
+`theReservationResponse()`, not `theCapturedReservationResponse()`.
+
+**Every field-level / value assertion inside a `then` / `thenEventually` / `thenContinually` block
+MUST be wrapped in a private, semantically-named matcher function** so the rendered body reads as
+domain prose. Raw `assertThat(...)` MatcherField flows and raw `shouldBe` **must NOT appear inline
+in the rendered test body** — push the mechanics down into a private receiver function whose name
+*is* the assertion in English. (The `@ExpandableSentence` drill-down of Rule 5 is the same
+discipline for multi-field expansion; this rule covers the single-clause `then`s too.)
+
+The golden's two matchers — a receiver on the request-body type and one on the status type — with
+the raw matcher/`shouldBe` mechanics moved out of the rendered block:
+
+```kotlin
+private fun JsonNode.requestsReservationOf(quantity: Int, item: String) {
+    assertThat(this, aQuantityField of quantity and (anItemField of item))
+}
+
+private fun OrderStatus.shouldBeConfirmed() {
+    this shouldBe OrderStatus.CONFIRMED
+}
+```
+
+The result is a body that reads straight through as prose — no `assertThat`, no `shouldBe` inline:
 
 ```kotlin
 given(scenario.anOrderService())
 given(scenario.primeSupplierToConfirmReservation(reservationId = fixtures(ReservationIdFx), quantity = fixtures(ReservationQuantityFx)))
 whenever(scenario.placingAnOrderFor(quantity = fixtures(ReservationQuantityFx), item = fixtures(CatalogueItemFx)))
-then(scenario.theReservationRequestBody()) { assertThat(this, aQuantityField of fixtures(ReservationQuantityFx) and (anItemField of fixtures(CatalogueItemFx))) }
-thenEventually(scenario.theOrderStatus()) { this shouldBe OrderStatus.CONFIRMED }
+then(scenario.theReservationRequestBody()) { requestsReservationOf(fixtures(ReservationQuantityFx), fixtures(CatalogueItemFx)) }
+thenEventually(scenario.theOrderStatus()) { shouldBeConfirmed() }
 then(scenario.theReservationResponse()) { theReservationResponseShows(reservationId, status, quantity) }
 ```
 
@@ -337,6 +360,7 @@ Before handing off to self-review, confirm:
 - [ ] Every brief literal is a fixture in a `FixtureContainer`, registered via `registerFixtures(...)`.
 - [ ] No brief literal inlined in any rendered position.
 - [ ] Field-level `then`s use `MatcherField … of fixtures(...)` — no whole-body JSON/xmlunit equality.
+- [ ] Every assertion in a `then` / `thenEventually` / `thenContinually` block is wrapped in a private, semantically-named matcher function — no raw `assertThat(...)` or `shouldBe` inline in the rendered body (e.g. `requestsReservationOf(...)`, `shouldBeConfirmed()`).
 - [ ] Drill-down `then`s use an `@ExpandableSentence` helper with `@RenderedValue` params.
 - [ ] Timing keywords match the brief tags (`then` / `thenEventually` / `thenContinually`).
 - [ ] `SequenceDiagramCapture(bus, …Descriptors())` wired; `kensaReporting()` called in `@BeforeEach`; teardown in `@AfterEach`.
