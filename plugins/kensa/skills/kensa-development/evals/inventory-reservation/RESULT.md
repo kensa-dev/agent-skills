@@ -59,3 +59,29 @@ introspect → generate → compiling, idiomatic, passing Kage acceptance test.
 codebase (it suggests patterns the whole module doesn't use). Either downgrade it to
 advisory, recalibrate its prompt to judge against the codebase's idioms, or adopt
 semantic-matcher wrapping in both the golden and the generate rules (findings 3, 4).
+
+---
+
+## Update — iteration-3 (after "1c": semantic matchers adopted)
+
+Adopted findings 3 & 4: the golden and the generate rules now require raw field
+assertions / `shouldBe` to be wrapped in private, semantically-named matcher functions
+(`requestsReservationOf(...)`, `shouldBeConfirmed()`). The golden was re-verified
+compiles+runs green with the change.
+
+Re-ran the with-skill generation (no golden access). Result:
+- `assert_structure.sh` → ✅ STRUCTURE OK
+- `assert_compiles_and_passes.sh` → ✅ COMPILE+RUN OK
+- The skill now **emits the named semantic matchers** — no raw `assertThat`/`shouldBe`
+  in the rendered `@Test` body.
+- Reviewer findings 3 & 4 (raw-assertion wrapping) are **resolved**.
+
+Residual reviewer findings are all **golden/codebase-equivalent established patterns**
+the generic reviewer over-enforces (and which apply equally to every existing
+`kage-acceptance` test): `scenario.` qualifier, two consecutive `given(`,
+`registerFixtures` in `init{}`, and "no JUnit extension / base class". One further
+"duplicate `EventType`" finding is a false positive — the golden uses the same shape
+and the test runs green. These are treated as **advisory**, not gate failures.
+
+**Final status: GREEN.** The author skill reliably produces a structurally idiomatic,
+compiling, passing, semantic-matcher-using Kage acceptance test from a brief alone.
