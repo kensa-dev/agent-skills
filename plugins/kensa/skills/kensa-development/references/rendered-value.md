@@ -57,6 +57,20 @@ private fun verifyLcWasApprovedWith(@RenderedValue expectedPrefix: String) {
 }
 ```
 
+### Chained paths
+
+A rendered reference may navigate properties, and paths accept Kotlin's `?.` safe-call and `!!`
+operators — the navigated value substitutes in the sentence, not the source words:
+
+```kotlin
+order?.customer?.name          // order is a @RenderedValue field
+fixtures[OrderFx]!!.reference
+outputs("orderId")?.length
+```
+
+Kotlin stdlib extension calls in a path (`.first()`, `.uppercase()`) resolve too; user-defined
+extension functions do not — wrap those in a `@RenderedValue` no-arg function instead.
+
 ## @ExpandableRenderedValue
 
 Renders **only the return value** of a method (or property/parameter) — the body is hidden. Use

@@ -165,7 +165,8 @@ Kensa's design enables a reusable toolbox of `Action<GivensContext>`, `Action<Ac
 A well-designed test suite has:
 - An abstract base class per domain consolidating `@ExtendWith`, `@UseSetupStrategy`, `@Sources`,
   `@RenderedValueWithHint`, `@KensaTab`, `KensaTest`, and `WithKotest` — concrete classes extend it
-- A `FixtureContainer` object with **only fixture definitions** — never builders or helpers
+- A `FixtureContainer` object with **only fixture definitions** (plain, derived, `parameterFixture`,
+  and `@Fixture` factory functions) — never request builders or general helpers
 - A `CapturedOutputContainer` object for system-generated values
 - A `SetupStep` class providing named entry points like `theOrderHasProgressedTo(state)`,
   built from state transitions the app must be driven through
@@ -447,6 +448,22 @@ thenEventually(theOrderStatus(), shouldBePending())
 // Stable state — must hold throughout the window
 thenContinually(theCircuitBreakerState(), shouldBeClosed())
 ```
+
+When **several independent conditions** must hold, use the block form — do not chain separate
+`thenEventually`/`andEventually` calls, which poll sequentially and consume the timeout budget
+one assertion at a time. The block polls all assertions in parallel within a single window:
+
+```kotlin
+thenEventually {
+    then(theOrderStatus(), shouldBeDispatched())
+    and(theAuditLog(), shouldContainDispatchEntry())
+}
+```
+
+`thenEventually { }` locks in each assertion as soon as it passes; `thenContinually { }` requires
+every assertion to hold on every tick. If several assertions time out, the failures are aggregated
+into one error listing each. A window may be passed as the first argument —
+`thenEventually(2.seconds) { ... }` — subject to the duration rule below.
 
 When a non-default timeout is needed, **never put the duration literal in the test body** — it reads as a plumbing detail. Push the whole call into a private function:
 

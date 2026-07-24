@@ -28,6 +28,49 @@ val LcRequest = fixture("LC Application Request", ApplicantId, BeneficiaryId) { 
 
 Up to 3 dependencies are supported as overloads.
 
+### Parameter fixture (derived from a parameterised-test argument)
+
+`parameterFixture` registers a fixture whose value is derived, per invocation, from a named
+`@ParameterizedTest` argument. It is seeded before the test body runs, so it resolves in
+`fixtures[...]` and renders in sentences like any other fixture:
+
+```kotlin
+object ParameterFixtures : FixtureContainer {
+    val Greeting = parameterFixture("Greeting", from = "userName") { name: String -> "Hello, $name" }
+}
+
+@ParameterizedTest
+@ValueSource(strings = ["alice", "bob"])
+fun greetsTheUser(userName: String) {
+    then(theGreeting(), equalTo(fixtures[Greeting]))
+}
+```
+
+`from` names the test method parameter to derive from. From Java, use
+`createParameterFixture(key, from, transform)`. A derived fixture may depend on a parameter
+fixture like any other. Accessing one outside a parameterised invocation fails with
+"must be seeded from test parameter".
+
+### Fixture factory function (`@Fixture`)
+
+When a fixture varies by an argument, annotate a factory function in the container with
+`@Fixture("Key")` and call it inline inside the subscript:
+
+```kotlin
+object ProductFixtures : FixtureContainer {
+    @Fixture("Product")
+    fun productFor(type: ProviderType) = fixture { Product("product-$type", 10) }
+}
+
+// In the test body — renders as a fixture token showing the resolved value:
+given(aCatalogueContaining(fixtures[productFor(providerType)]))
+```
+
+Each distinct argument set is its own memoized fixture within an invocation:
+`fixtures[productFor(STANDARD)]` always resolves to the same instance, while
+`productFor(PREMIUM)` is a separate one. The function is never invoked at registration —
+only when the test dereferences it. Requires the Kensa compiler plugin.
+
 ### Fixture keys must be globally unique across all registered containers.
 Use descriptive keys like `"LCApplicationRequest"` not `"Request"`.
 
@@ -39,7 +82,7 @@ All fixtures must be defined inside a `FixtureContainer` object:
 object TradeFinanceFixtures : FixtureContainer {
     val ApplicantId = fixture("Applicant ID") { "CORP-001" }
     val BeneficiaryId = fixture("Beneficiary ID") { "SUPP-042" }
-    val LcRequest = fixture("LC Application Request", applicantId, beneficiaryId) { id, bId ->
+    val LcRequest = fixture("LC Application Request", ApplicantId, BeneficiaryId) { id, bId ->
         LcApplicationRequest(applicantId = id, beneficiaryId = bId, amount = BigDecimal("50000"))
     }
     val ExpectedLcNumberPrefix = fixture("Expected LC Number Prefix") { "LC-2024" }
@@ -90,16 +133,16 @@ fun `an applicant submits an LC application`() {
 ```kotlin
 // In a GivensContext action:
 private fun anApplicantWithSufficientCreditLimit() = Action<GivensContext> { (fixtures) ->
-    creditStub.configureLimit(fixtures[applicantId], limit = BigDecimal("100000"))
+    creditStub.configureLimit(fixtures[ApplicantId], limit = BigDecimal("100000"))
 }
 
 // In an ActionContext action:
 private fun aClientSubmitsAnLcApplication() = Action<ActionContext> { (fixtures, interactions) ->
-    holder.result = tradePortal.submit(fixtures[lcRequest])
+    holder.result = tradePortal.submit(fixtures[LcRequest])
 }
 
 // In a StateCollector:
-private fun theApplicantId() = StateCollector { fixtures[applicantId] }
+private fun theApplicantId() = StateCollector { fixtures[ApplicantId] }
 ```
 
 ## Fixtures in Rendered Contexts
@@ -107,6 +150,10 @@ private fun theApplicantId() = StateCollector { fixtures[applicantId] }
 `fixtures[key]` and `outputs[key]` can appear freely in test bodies and `@ExpandableSentence`
 bodies. Kensa substitutes the resolved value in the report — so the report shows the actual
 applicant ID, not the variable name `applicantId`.
+
+Chained navigation renders the navigated value, and paths accept Kotlin's `?.` safe-call and
+`!!` operators: `fixtures[OrderFx]?.customer?.name`, `outputs("orderId")!!.length`, and
+`fixtures[productFor(type)]?.name` all substitute the resolved value, not the source words.
 
 ## When to Use Fixtures vs Mutable Fields
 
@@ -135,7 +182,8 @@ private lateinit var holder: Holder
 ```
 ## Extension Functions for Request Builders
 
-`FixtureContainer` is only for fixture *definitions*. When you need to assemble a complex request
+`FixtureContainer` is only for fixture *definitions* — including `@Fixture` factory functions
+and `parameterFixture`s. When you need to assemble a complex request
 object from multiple fixtures (e.g., a service instruction that populates a dozen fields), define
 it as an extension function on `Fixtures`, `KensaTest`, or `FixturesAndOutputs` — not inside the
 container. Put these in a dedicated object, not the companion object or test class.
@@ -180,6 +228,8 @@ migrate it to `Fixtures`.
 givens["applicantId"] = "CORP-001"
 val id = givens["applicantId"]
 
-// Correct — use fixtures
-val applicantId = fixture("Applicant ID") { "CORP-001" }
+// Correct — use a fixture, defined in a FixtureContainer as always
+object MyFixtures : FixtureContainer {
+    val ApplicantId = fixture("Applicant ID") { "CORP-001" }
+}
 ```
