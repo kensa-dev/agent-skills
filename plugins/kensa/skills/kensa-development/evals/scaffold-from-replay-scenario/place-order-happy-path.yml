@@ -1,10 +1,11 @@
 schema: 1
 slug: place-order-happy-path
 name: "Place order: happy path"
-description: ""
+description: Supplier receives the order body with the session's Amount; order service gets the Reference back
 tags:
 - order
 - happy
+- app:orders
 env: local
 steps:
 - ref: supplier.responds-with-reference

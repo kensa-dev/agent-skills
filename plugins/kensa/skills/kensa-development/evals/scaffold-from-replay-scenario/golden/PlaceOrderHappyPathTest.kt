@@ -32,11 +32,11 @@ class PlaceOrderHappyPathTest : KensaTest, WithKotest {
 
     // Replay step supplier.responds-with-reference — group "Supplier", name "Responds with reference", target Supplier
     private fun theSupplierRespondsWithReference(): Action<GivensContext> =
-        TODO("Wire to the SupplierReplay val registered as supplier.responds-with-reference")
+        TODO("Wire to the step registered as supplier.responds-with-reference in group 'Supplier'")
 
     // Replay step order-service.place-order — group "Order Service", name "Place order", target OrderService
     private fun theOrderIsPlaced(): Action<ActionContext> =
-        TODO("Wire to the OrderReplay val registered as order-service.place-order")
+        TODO("Wire to the step registered as order-service.place-order in group 'Order Service'")
 
     private fun theSupplierRequest(): StateCollector<String> =
         TODO("Collect what target 'Supplier' received — e.g. supplier.store.awaitEarliest(trackingId)")

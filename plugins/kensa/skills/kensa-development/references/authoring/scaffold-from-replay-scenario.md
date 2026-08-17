@@ -21,6 +21,10 @@ Optional: the session's evidence — `evidence/<slug>.yml`, or the report JSON i
 carries `steps[].outcome.verify` (`Passed` / `Failed` / `Skipped` plus a message) and
 `steps[].outcome.response`, which turn vague `then` placeholders into specific ones (Rule 5).
 
+**There is no `expect` field in a scenario file.** A scenario's `expect(...)` text is saved as its
+`description`, and Kage puts it back on reopen (`expect = file.description`). So the file's
+`description` *is* the expectation — treat it as such, not as prose for `@Notes`.
+
 Ask for evidence once if it was not supplied, then proceed without it — the scenario alone is enough
 for a skeleton.
 
@@ -51,8 +55,8 @@ extension (the one that starts their stubs) is a TODO comment on the class, not 
 schema: 1
 slug: place-order-happy-path
 name: "Place order: happy path"
-description: ""
-tags: [order, happy]
+description: "Supplier receives the order body with the session's Amount"   # the scenario's expect(...)
+tags: [order, happy, app:orders]
 env: local
 steps:
 - ref: supplier.responds-with-reference    # a catalogue step, by id
@@ -97,14 +101,15 @@ cursor, so the file's list is in insertion order; `phase` is the truth. Within a
 |---|---|
 | `name` | class name (`PlaceOrderHappyPathTest`) and the `@Test` function name |
 | `slug`, `env` | class KDoc only — a test picks its own wiring, not the session's env |
-| `description`, `notes`, `seeAlso` | one `@Notes("…")` on the class (Kensa's `@Notes` targets classes only) |
+| `description` | the expectation (Kage reopens a scenario with `expect = description`) — a KDoc `Expect:` line and Rule 5's placeholder source; **not** `@Notes` |
+| `notes`, `seeAlso` | one `@Notes("…")` on the class (Kensa's `@Notes` targets classes only) |
 | tag `issue:<X>` or a ticket-shaped tag (`ABC-123`) | `@Issue("ABC-123")` |
 | tag `app:<X>` | dropped — it is Replay's own routing tag |
 | any other tag | `@Tag("order")` (JUnit), one per tag |
 | step `phase: Setup` | `given(...)`, then `and(...)` for each one after the first |
 | first step `phase: Steps` | `whenever(...)` |
 | later steps `phase: Steps` | a further `whenever(...)` each — there is no `and` overload for `Action<ActionContext>` |
-| `expect` (from the scenario's `expect(...)`, carried on evidence) | the `then` placeholder's matcher name and its TODO text |
+| evidence `steps[].outcome.verify` / `.response` (when supplied) | per-step `then` placeholders, ahead of `description` (Rule 5) |
 | `pins`, `variables` | fixture overrides (Rule 6) |
 | `locks` | a KDoc line — locks are a session concern with no test equivalent |
 
@@ -128,7 +133,7 @@ never guess the val name. Emit a private function per distinct ref:
 ```kotlin
 // Replay step supplier.responds-with-reference — group "Supplier", name "Responds with reference", target Supplier
 private fun theSupplierRespondsWithReference(): Action<GivensContext> =
-    TODO("Wire to the SupplierReplay val registered as supplier.responds-with-reference")
+    TODO("Wire to the step registered as supplier.responds-with-reference in group 'Supplier'")
 ```
 
 Emit one function per distinct ref even when the same ref appears twice; call it twice.
@@ -152,6 +157,8 @@ reference is unknown, and that comes from the test's own wiring.
 `HttpStub.prime(status, body, headers, trackingId)` and `JmsParty.sends(queue, body, shape, trackingId)`
 default their tracking id from the thread-local, so pass only status/body/headers (or queue/body/shape).
 The queue name is not in the file — take it from `message.jms` context or leave it a TODO constant.
+The first type parameter of `HttpStub` / `JmsParty` is the tracking-id type, which a test rarely names:
+star-project it (`HttpStub<*, String>`) and the tracking id defaults from the thread-local.
 
 Name the stub val after the target, lower-camel (`supplier`, `orderService`, `billing`), declare it as
 a TODO-initialised property so the skeleton still compiles, and wrap each call in a private function so
@@ -163,8 +170,8 @@ import dev.kensa.kage.testkit.stub.JmsParty
 import dev.kensa.toolbox.jms.JmsShape
 import org.http4k.core.Status
 
-private val supplier: HttpStub<String, String> = TODO("The HttpStub your suite already builds for target 'Supplier'")
-private val billing: JmsParty<String, String> = TODO("The JmsParty your suite already builds for target 'Billing'")
+private val supplier: HttpStub<*, String> = TODO("The HttpStub your suite already builds for target 'Supplier'")
+private val billing: JmsParty<*, String> = TODO("The JmsParty your suite already builds for target 'Billing'")
 
 private fun theSupplierAnswersWithAReference() = Action<GivensContext> {
     supplier.prime(Status.OK, """{"reference":"ref-9001"}""", mapOf("Content-Type" to "application/json"))
@@ -185,8 +192,11 @@ in the file. So placeholders are derived, in this order:
 1. **With evidence** — one `then` per step whose `outcome.verify` is `Passed` or `Failed`, named from
    the step it belonged to, with the verify message in the TODO text. A step whose outcome shows a
    dispatch `response` also earns a collector for that response.
-2. **Without evidence** — a single `then` per Steps-phase step, from the scenario's `expect` text.
-3. **Neither** — one `then` with a TODO saying the scenario declared no expectation.
+2. **Without evidence** — a single `then` per Steps-phase step, from the scenario's `description`,
+   which is the `expect(...)` text Kage restores on reopen. Name the matcher from it and put it
+   verbatim in the TODO.
+3. **Neither** — `description` blank and no evidence: one `then` with a TODO saying the scenario
+   declared no expectation.
 
 Emit collector and matcher as separate private functions, both `TODO(...)`, both typed:
 
@@ -231,10 +241,11 @@ Input (`scenarios/place-order-happy-path.yml`, saved from the sample replay plug
 schema: 1
 slug: place-order-happy-path
 name: "Place order: happy path"
-description: ""
+description: Supplier receives the order body with the session's Amount; order service gets the Reference back
 tags:
 - order
 - happy
+- app:orders
 env: local
 steps:
 - ref: supplier.responds-with-reference
@@ -288,11 +299,11 @@ class PlaceOrderHappyPathTest : KensaTest, WithKotest {
 
     // Replay step supplier.responds-with-reference — group "Supplier", name "Responds with reference", target Supplier
     private fun theSupplierRespondsWithReference(): Action<GivensContext> =
-        TODO("Wire to the SupplierReplay val registered as supplier.responds-with-reference")
+        TODO("Wire to the step registered as supplier.responds-with-reference in group 'Supplier'")
 
     // Replay step order-service.place-order — group "Order Service", name "Place order", target OrderService
     private fun theOrderIsPlaced(): Action<ActionContext> =
-        TODO("Wire to the OrderReplay val registered as order-service.place-order")
+        TODO("Wire to the step registered as order-service.place-order in group 'Order Service'")
 
     private fun theSupplierRequest(): StateCollector<String> =
         TODO("Collect what target 'Supplier' received — e.g. supplier.store.awaitEarliest(trackingId)")
@@ -314,5 +325,6 @@ resist filling the TODOs with plausible-looking guesses.
 - [ ] One `given`/`and` per Setup step, `whenever` per Steps step, ordered by phase.
 - [ ] Every `ref` has a comment carrying its id, group and name.
 - [ ] Every `raw` step is a real testkit call, not a TODO, where the payload allows it.
+- [ ] The scenario's `description` drove the `then` placeholder, not `@Notes`.
 - [ ] `pins`/`variables` are fixtures or comments — never inline literals.
 - [ ] Say plainly, in the handover, which TODOs the dev must fill and in what order.
