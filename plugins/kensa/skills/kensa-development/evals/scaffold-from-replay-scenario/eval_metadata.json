@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "eval_name": "scaffold-from-replay-scenario",
+  "expectations": [
+    { "text": "Emits a single Kotlin file: a class implementing KensaTest (and WithKotest), no invented @ExtendWith extension name" },
+    { "text": "The Setup-phase ref becomes given(...) and the Steps-phase ref becomes whenever(...), in phase order" },
+    { "text": "Each ref becomes a private function returning Action<GivensContext> / Action<ActionContext> whose body is TODO(...), with the ref id, group and step name recorded in a comment" },
+    { "text": "No ReplaySteps Kotlin val name is invented — the file only carries step ids" },
+    { "text": "A then/thenEventually placeholder is derived from the scenario's expect text, with collector and matcher as separate typed TODO functions" },
+    { "text": "seeAlso and tags are carried as @Notes / @Tag; the app: tag is dropped" },
+    { "text": "The emitted file compiles (every TODO sits in a function or property with a declared type)" },
+    { "text": "Test body is prose only: no assignments, no inline lambdas, no duration literals" }
+  ]
+}

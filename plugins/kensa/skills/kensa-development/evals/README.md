@@ -1,6 +1,8 @@
-# Author-skill eval: inventory-reservation (Kage acceptance)
+# kensa-development evals
 
-This eval checks whether the `kensa-development` skill can AUTHOR an idiomatic Kage
+## Eval 0 — inventory-reservation (Kage acceptance)
+
+Checks whether the `kensa-development` skill can AUTHOR an idiomatic Kage
 acceptance test from a Given/When/Then brief.
 
 ## Prerequisite (important)
@@ -33,3 +35,19 @@ of `kensa-dev/kensa` (the `:kage-acceptance` module). Before running:
 Follow the skill-creator eval flow: spawn a with-skill run and a baseline run for
 eval-0, save outputs per run, then grade each expectation (run the three scripts;
 use `agents/grader.md` for the qualitative ones).
+
+---
+
+## Eval 1 — scaffold-from-replay-scenario
+
+Checks whether the skill can SCAFFOLD a `KensaTest` skeleton from a saved Kensa Replay
+scenario (`references/authoring/scaffold-from-replay-scenario.md`).
+
+1. Prompt = `scaffold-from-replay-scenario/brief.md`; input =
+   `scaffold-from-replay-scenario/place-order-happy-path.yml` (real output of
+   `StoredFiles.encode(...)` for the sample replay plugin's happy path).
+2. The skill emits one Kotlin file. Grade against
+   `scaffold-from-replay-scenario/eval_metadata.json`.
+3. `scaffold-from-replay-scenario/golden/` holds the reference skeleton. It compiles against a
+   test classpath carrying kensa-framework-junit6, kensa-assertions-kotest and kage-testkit;
+   set `input_paths.compile_checkout` locally to such a checkout to re-check.

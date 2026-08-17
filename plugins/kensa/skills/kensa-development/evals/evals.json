@@ -8,6 +8,16 @@
       "input_paths": {
         "kage_acceptance_checkout": "<set locally to a kage-branch checkout of kensa-dev/kensa; do not commit an absolute path>"
       }
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "scaffold-from-replay-scenario",
+      "prompt_file": "scaffold-from-replay-scenario/brief.md",
+      "instruction": "Scaffold a Kensa test skeleton from the saved Replay scenario named in this brief. Emit one Kotlin file; it must compile as written.",
+      "input_paths": {
+        "scenario_file": "scaffold-from-replay-scenario/place-order-happy-path.yml",
+        "compile_checkout": "<set locally to a checkout with kensa-framework-junit6, kensa-assertions-kotest and kage-testkit on a test classpath; do not commit an absolute path>"
+      }
     }
   ]
 }

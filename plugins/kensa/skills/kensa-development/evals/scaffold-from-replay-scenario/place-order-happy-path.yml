@@ -1,0 +1,21 @@
+schema: 1
+slug: place-order-happy-path
+name: "Place order: happy path"
+description: ""
+tags:
+- order
+- happy
+env: local
+steps:
+- ref: supplier.responds-with-reference
+  name: Responds with reference
+  phase: Setup
+- ref: order-service.place-order
+  name: Place order
+  phase: Steps
+pins: {}
+locks: []
+variables: {}
+seeAlso:
+- InProcessAcceptanceTest
+notes: ""
