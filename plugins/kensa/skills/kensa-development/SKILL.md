@@ -10,6 +10,9 @@ description: >
   Also AUTHORS new Kensa tests from requirements: trigger for "write a Kensa test for…",
   "author a test that…", "generate a Kage acceptance test from this brief/ticket", or when given
   a Given/When/Then brief (inline or a .md file) for a Kensa project.
+  Also SCAFFOLDS a test skeleton from a saved Kensa Replay scenario: trigger for "scaffold a test
+  from this Replay scenario", "turn this scenarios/<slug>.yml into a Kensa test", or when given a
+  Replay scenario/evidence file.
 ---
 
 # Kensa Test Reviewer
@@ -41,6 +44,11 @@ Decide which mode you are in before doing anything else:
   a Given/When/Then description, or "write a test that…"). Follow
   `references/authoring/overview.md`, which runs a four-phase pipeline and reuses the
   best-practice rules below as a self-review pass.
+- **Scaffold** — the user pastes or points at a saved Kensa Replay scenario
+  (`scenarios/<slug>.yml`, or a session/evidence export) and wants the test that locks in what
+  the tester walked through. Follow `references/authoring/scaffold-from-replay-scenario.md`.
+  This is a one-shot transform, not the authoring pipeline: the scenario file is the brief, so
+  skip intake. Run the review rules over the emitted skeleton.
 
 If both could apply (e.g. "rewrite this test to also cover X"), prefer Author — you are
 producing new test code — but run the review rules over the result.
@@ -69,6 +77,7 @@ Read these files only when the relevant topic appears in the test being reviewed
 | `CapturedOutputContainer`, `capturedOutput<T>`, `outputs[key]`, `registerCapturedOutputs` | `references/captured-outputs.md` |
 | `@RenderedValue`, `@RenderedValueWithHint`, `@RenderedValueContainer`, `@ExpandableRenderedValue`, `@Issue`, `@Notes` | `references/rendered-value.md` |
 | Authoring a test from a brief / requirements / ticket | `references/authoring/overview.md` |
+| A Replay scenario file (`scenarios/<slug>.yml`), `ReplaySteps`/`ReplayScenarios` ids, Replay evidence | `references/authoring/scaffold-from-replay-scenario.md` |
 
 ## The Best Practices
 
