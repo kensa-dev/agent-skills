@@ -71,6 +71,14 @@ outputs("orderId")?.length
 Kotlin stdlib extension calls in a path (`.first()`, `.uppercase()`) resolve too; user-defined
 extension functions do not — wrap those in a `@RenderedValue` no-arg function instead.
 
+### Qualified enum constants
+
+When two enums share a constant name and Kotlin forces qualification, `OrderStatus.PENDING` in a
+test body renders as just `PENDING` as a value token with the type's simple name as a hover hint.
+Nested objects and sealed-class data objects (`OrderStatus.Pending`) render the same way. Do not
+flag a forced qualifier as noise words, and do not wrap it in a helper just to hide the qualifier.
+A qualifier that does not resolve through the file's imports renders as camel-split words.
+
 ## @ExpandableRenderedValue
 
 Renders **only the return value** of a method (or property/parameter) — the body is hidden. Use
@@ -172,6 +180,19 @@ Place on the test method or the test class:
 fun canIssueAnLcWhenCreditAndSanctionsArePositive() { ... }
 ```
 
+## @Epic
+
+Links a test or class to one or more epics, distinct from `@Issue`. Renders as a badge beside the
+issue badges, resolved against the same configured `issueTrackerUrl`, and the report tree filters
+on `epic:`. Same targets as `@Issue`; vararg ids.
+
+```kotlin
+@Epic("PROJ-1")
+@Issue("PROJ-42", "PROJ-43")
+@Test
+fun refundIsProcessedWithin24Hours() { ... }
+```
+
 ## @Notes
 
 Attaches a freeform note to a test class. Rendered as a styled card above the test list in the HTML
@@ -255,8 +276,11 @@ class PaymentTest : KensaTest, WithKotest { ... }
 
 ## @RenderedValueContainer
 
-Use when multiple mutable output fields are repeated across several test classes.
-The annotation makes each property render when mentioned in the test body:
+Marks a field or a test-method parameter whose members annotated `@RenderedValue` render as
+resolved values when referenced through it in the test body.
+
+**On a field**, as a holder for mutable outputs repeated across several test classes. Inside a
+`with(holder) { }` body the bare member name resolves too:
 
 ```kotlin
 @RenderedValueContainer
@@ -270,6 +294,33 @@ private lateinit var holder: Holder
 
 For a single mutable output field, prefer `@RenderedValue lateinit var` directly on the class
 rather than a container.
+
+**On a test-method parameter**, e.g. a `@MethodSource` use-case object. A prefixed chain
+(`useCase.stub`, `useCase.ref.name`) renders as the resolved value, gated on the member carrying
+`@RenderedValue`. The chain may be followed by a call taking arguments: the prefix renders as the
+value and the call parses as ordinary sentence words. Bare-name resolution inside
+`with(container) { }` is a field-container feature only.
+
+```kotlin
+class WholesalerStub {
+    fun sends(request: CheckSessionRequest): CheckSessionResponse = ...
+    override fun toString() = "fastweb"
+}
+
+class WholesalerUseCase(@RenderedValue val stub: WholesalerStub)
+
+@ParameterizedTest
+@MethodSource("wholesalers")
+fun canCheckSession(@RenderedValueContainer useCase: WholesalerUseCase) {
+    whenever(useCase.stub.sends(aCheckSessionRequest()))
+}
+// Renders: When fastweb sends a check session request
+```
+
+`useCase.stub` displays via a registered `valueRenderer<WholesalerStub>` or, absent one, its
+`toString()`. Kotlin chains accept `.` and `?.` and stop at `::` and `!!`. Java supports only the
+chain-followed-by-call shape; a bare chain with no trailing call renders as words. A member that
+is a `by fixtures(fx)` property renders as a fixture token (see `fixtures.md`).
 
 ## Common Mistakes
 

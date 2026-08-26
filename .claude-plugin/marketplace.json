@@ -2,7 +2,7 @@
   "name": "kensa-marketplace",
   "metadata": {
     "description": "AI coding agent skills for the Kensa BDD framework",
-    "version": "0.7.1"
+    "version": "0.9.1"
   },
   "owner": {
     "name": "kensa-dev",

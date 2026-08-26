@@ -71,6 +71,39 @@ Each distinct argument set is its own memoized fixture within an invocation:
 `productFor(PREMIUM)` is a separate one. The function is never invoked at registration —
 only when the test dereferences it. Requires the Kensa compiler plugin.
 
+### Fixture values from shared objects (`by fixtures(fx)`)
+
+A long-lived object shared across invocations (a `@MethodSource` use-case object, a scenario
+holder) can expose a per-invocation fixture value as a plain property with the `by fixtures(fx)`
+delegate. It re-reads the fixture from the active test context on every access, so one instance is
+safe under parallel execution and never holds a `TestContext` or mutates shared state. Access
+outside an active test throws, naming the property and fixture. Kotlin only.
+
+```kotlin
+data class WholesalerUseCase(private val referenceFx: Fixture<ProviderOrderReference>) {
+    @get:RenderedValue
+    val providerOrderReference: ProviderOrderReference by fixtures(referenceFx)
+}
+```
+
+**Trap: only the delegated property is re-read.** A `val` initialised from it is evaluated once at
+construction and a `by lazy` once at first access, so either freezes whichever invocation got
+there first and every later invocation silently reads a stale value. Flag both in review. Derive
+with a getter, or with a derived fixture when the derivation should appear in the report:
+
+```kotlin
+val reference: ProviderOrderReference by fixtures(referenceFx)
+val summary: String = "order $reference"              // Bad: frozen at construction
+val alsoFrozen: String by lazy { "order $reference" } // Bad: frozen at first access
+val correct: String get() = "order $reference"        // Good: re-read per access
+```
+
+Annotate the property `@RenderedValue` (or `@get:RenderedValue`) and mark the parameter or field
+holding the object `@RenderedValueContainer`; `useCase.providerOrderReference` in the test body
+then renders as a fixture token, styled and highlighted exactly like `fixtures[referenceFx]`. See
+`rendered-value.md` for the container chain rules. Delegates also resolve inside
+`thenEventually { }` / `thenContinually { }` blocks.
+
 ### Fixture keys must be globally unique across all registered containers.
 Use descriptive keys like `"LCApplicationRequest"` not `"Request"`.
 

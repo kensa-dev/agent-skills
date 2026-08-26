@@ -15,6 +15,13 @@ usually collected in their own class with an entry-point function like:
 fun theOrderHasProgressedTo(state: OrderState): SetupStep = ...
 ```
 
+## Legacy: `withTestContext`
+
+`TestContextUtil.withTestContext { }` predates `SetupStep` and is deprecated. Since 0.9.0 it is
+gated behind `@KensaInternalApi` (an opt-in *error*), so a test project calling it needs
+`@file:OptIn(dev.kensa.KensaInternalApi::class)` or `-opt-in=dev.kensa.KensaInternalApi`. Flag
+any use in review and migrate the setup into a `SetupStep` as below.
+
 ## The SetupStep Interface
 
 ```kotlin

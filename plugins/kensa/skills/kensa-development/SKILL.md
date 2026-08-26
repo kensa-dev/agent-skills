@@ -65,6 +65,16 @@ the current invocation's data:
 All three are **scoped to the current test invocation**. Parallel runs each get their own isolated
 instance — never shared across tests.
 
+### Supported API (0.9.0 and later)
+
+Kensa froze its public API ahead of 1.0. `dev.kensa.parse`, `dev.kensa.state` (except
+`SetupStrategy`), `dev.kensa.output`, `dev.kensa.service` and `dev.kensa.util` are `internal`;
+anything marked `@KensaInternalApi` is an opt-in *error* meant for framework adapters only, and
+`@KensaExperimental` marks surfaces still being designed. A test that imports from those packages
+or opts in to `KensaInternalApi` is coupled to plumbing: flag it and rewrite against `KensaTest`,
+`Action`, `StateCollector`, `SetupStep`, fixtures and outputs. Upgrade core and the framework
+adapter together (use `kensa-bom`).
+
 ## On-Demand References
 
 Read these files only when the relevant topic appears in the test being reviewed:
@@ -73,9 +83,10 @@ Read these files only when the relevant topic appears in the test being reviewed
 |---|---|
 | `interactions.capture(...)`, sequence diagrams, `from().to().with()` | `references/interactions.md` |
 | `SetupStep`, `SetupSteps`, `KotestSetupStep`, `buildGivens`, `buildActions`, `@UseSetupStrategy` | `references/setup-steps.md` |
-| `FixtureContainer`, multi-dependency fixtures, `givens[...]` | `references/fixtures.md` |
+| `FixtureContainer`, multi-dependency fixtures, `by fixtures(fx)`, `givens[...]` | `references/fixtures.md` |
 | `CapturedOutputContainer`, `capturedOutput<T>`, `outputs[key]`, `registerCapturedOutputs` | `references/captured-outputs.md` |
-| `@RenderedValue`, `@RenderedValueWithHint`, `@RenderedValueContainer`, `@ExpandableRenderedValue`, `@Issue`, `@Notes` | `references/rendered-value.md` |
+| `@RenderedValue`, `@RenderedValueWithHint`, `@RenderedValueContainer` (field or parameter, `useCase.stub.sends(...)` chains), `@ExpandableRenderedValue`, qualified enum constants, `@Issue`, `@Epic`, `@Notes` | `references/rendered-value.md` |
+| `withTestContext`, `TestContextUtil`, `@OptIn(KensaInternalApi::class)` | `references/setup-steps.md` (Legacy section) |
 | Authoring a test from a brief / requirements / ticket | `references/authoring/overview.md` |
 | A Replay scenario file (`scenarios/<slug>.yml`), `ReplaySteps`/`ReplayScenarios` ids, Replay evidence | `references/authoring/scaffold-from-replay-scenario.md` |
 
@@ -164,7 +175,8 @@ private lateinit var result: ServiceResponse
 ```
 
 Only use a `@RenderedValueContainer` inner class when many mutable fields are repeated across
-multiple tests.
+multiple tests. The annotation also goes on a test-method parameter (a `@MethodSource` use-case
+object) so chains like `useCase.stub` render as values; see `references/rendered-value.md`.
 
 ### BP-4: Build a composable toolbox — don't repeat setup logic
 
@@ -473,6 +485,24 @@ thenEventually {
 every assertion to hold on every tick. If several assertions time out, the failures are aggregated
 into one error listing each. A window may be passed as the first argument —
 `thenEventually(2.seconds) { ... }` — subject to the duration rule below.
+
+**Negative assertions** ("no cancellation event is ever received") must not use `thenEventually`:
+it passes on the first poll, before a late event could arrive. Use `then` when a later positive
+assertion already anchors that the system has finished, otherwise `thenContinually`. For "no
+element matching" over a collection use `noneMatching(matcher)` from
+`dev.kensa.kotest.testsupport.collections` (hamkrest: `dev.kensa.hamkrest.testsupport.collections`);
+it ignores unrelated elements and fails listing the offending ones. `thenContinually` takes an
+explicit window like `thenEventually` (`thenContinually(2.seconds, collector, matcher)`, subject
+to the duration rule below) and also takes a `ThenSpec` directly, mirroring `then(spec)` and
+`thenEventually(spec)`.
+
+```kotlin
+// Bad — passes trivially on the first empty poll
+thenEventually(theCapturedEvents(), noneMatching(aCancelledOrderEvent()))
+
+// Good — must hold on every tick of the window
+thenContinually(theCapturedEvents(), noneMatching(aCancelledOrderEvent()))
+```
 
 When a non-default timeout is needed, **never put the duration literal in the test body** — it reads as a plumbing detail. Push the whole call into a private function:
 
