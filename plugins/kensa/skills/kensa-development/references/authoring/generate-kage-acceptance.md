@@ -6,18 +6,16 @@ This phase turns a **complete brief** (from `intake.md`) plus a **project invent
 reproduce its idioms for any brief. Every example below is a real line from that golden.
 
 Before emitting anything: re-read the BP rules in `SKILL.md` (they govern rendered prose) and the
-on-demand references `fixtures.md`, `interactions.md`, `rendered-value.md` (reuse them; do not
-restate their content here). The single most common failure is inlining brief literals instead of
+on-demand references `fixtures.md`, `interactions.md`, `rendered-value.md`. The single most common failure is inlining brief literals instead of
 fixtures — see Rule 3.
 
 ---
 
-## Rule 0 — Imports: get these exact (do not guess packages)
+## Rule 0 — Imports: exact packages
 
 Wrong packages are the most common *compile* failure. The fixture DSL lives under
-`dev.kensa.fixture`, **not** `dev.kensa`. Mirror the exact imports of any existing fixtures/helpers
-seen during introspect; when in doubt use these canonical imports, and **never import a package**
-(`import dev.kensa.fixture` is wrong — import the function or type):
+`dev.kensa.fixture`. Mirror the exact imports of any existing fixtures/helpers seen during
+introspect; when in doubt use these canonical imports, each naming a function or type:
 
 ```kotlin
 import dev.kensa.fixture.FixtureContainer
@@ -96,8 +94,8 @@ whenever(scenario.placingAnOrderFor(quantity = fixtures(ReservationQuantityFx), 
 
 **Every concrete value in the brief — references, codes, quantities — becomes a fixture.** Define
 it in the `FixtureContainer`, register with `registerFixtures(...)`, consume with `fixtures(Name)`.
-**NEVER inline a brief literal in a rendered position.** This is the #1 thing a naive attempt gets
-wrong.
+The rendered body consumes the fixture; the literal appears once, in the container. This is
+the #1 thing a naive attempt gets wrong.
 
 The golden's brief values `RES-1`, `WIDGET-1`, `5`:
 
@@ -115,7 +113,7 @@ Registered in the runner's `init`:
 init { registerFixtures(InventoryReservationFixtures) }
 ```
 
-Consumed in the `@Test` body — never the literal:
+Consumed in the `@Test` body through the fixture:
 
 ```kotlin
 given(scenario.primeSupplierToConfirmReservation(
@@ -132,10 +130,11 @@ uses in that project.)
 
 ## Rule 4 — MatcherField for field-level `then`s
 
-A `then` of the form "field X equals Y" becomes a typed `MatcherField` — a `JsonField` variant
+A `then` of the form "field X equals Y" becomes a typed `MatcherField` (a field descriptor that
+pairs a path with an expected value) — a `JsonField` variant
 (`JsonIntField` / `JsonTextField`, or `XmlField` for XML) — declared as a property, concatenated
-with `of fixtures(...)` and combined with `and (...)`. **NEVER assert with whole-body JSON-string
-equality or xmlunit.** `MatcherField` is the abstract base; the concrete types (`JsonIntField`,
+with `of fixtures(...)` and combined with `and (...)`; a whole-body JSON-string or xmlunit
+comparison is the shape self-review rejects. `MatcherField` is the abstract base; the concrete types (`JsonIntField`,
 `JsonTextField`, and the `JsonField` family broadly) live under
 `dev.kensa.hamkrest.testsupport.field.json.*`.
 
@@ -155,8 +154,8 @@ private val aQuantityField: JsonIntField get() = JsonIntField("/quantity")
 private val anItemField: JsonTextField get() = JsonTextField("/item")
 ```
 
-The raw `assertThat(...) … of … and (…)` flow does **not** go inline in the rendered body — wrap it
-in a named semantic matcher (Rule 9). The golden's matcher and its call:
+The raw `assertThat(...) … of … and (…)` flow lives inside a named semantic matcher (Rule 9). The
+golden's matcher and its call:
 
 ```kotlin
 private fun JsonNode.requestsReservationOf(quantity: Int, item: String) {
@@ -199,8 +198,7 @@ then(scenario.theReservationResponse()) {
 }
 ```
 
-(Per BP-2, an `@ExpandableSentence` only ever wraps an *assertion* sequence — never a function that
-returns an `Action`.)
+(Per BP-2, an `@ExpandableSentence` wraps an *assertion* sequence.)
 
 ---
 
@@ -214,8 +212,8 @@ Map the brief's `[timing: ...]` tag to the DSL, always using the trailing-lambda
 | `eventually` | `thenEventually(...) { ... }` |
 | `continually` | `thenContinually(...) { ... }` |
 
-The golden's `immediate` field check and `eventually` status check (each wrapped in a named
-semantic matcher per Rule 9 — never raw `assertThat`/`shouldBe` inline):
+The golden's `immediate` field check and `eventually` status check, each wrapped in a named
+semantic matcher per Rule 9:
 
 ```kotlin
 then(scenario.theReservationRequestBody()) { requestsReservationOf(...) }
@@ -223,8 +221,7 @@ then(scenario.theReservationRequestBody()) { requestsReservationOf(...) }
 thenEventually(scenario.theOrderStatus()) { shouldBeConfirmed() }
 ```
 
-Never put a timeout duration literal in the body — push it into a private function (SKILL.md, DSL
-quick reference).
+A timeout duration lives in a private function (`references/dsl.md`).
 
 ---
 
@@ -296,20 +293,15 @@ fun tearDown() {
 ## Rule 8 — Reuse over invention
 
 Before declaring **any** fixture, priming helper, descriptor, or matcher field, check the inventory
-(`introspect.md` reuse mandate). If the inventory lists a `FixtureContainer` whose names cover the
-brief's data, register and consume it — do not declare a new one. If a `primingHelper` already
-primes the interaction under test, call it — do not write a fresh priming step. **Inventing a
-fixture that already exists is a defect** that the self-review phase checks for explicitly. Only
-add a new fixture/helper when the inventory genuinely lacks one, and place it next to the existing
-pattern.
+and apply its reuse mandate (`introspect.md`). A new fixture or helper appears only when the
+inventory lacks one, placed next to the existing pattern.
 
 ---
 
 ## Rule 9 — Rendered prose discipline (named semantic matchers)
 
-The `@Test` body and `@ExpandableSentence` bodies must read as fluent English (defer to the BP
-rules in `SKILL.md` — no `val` assignments, no loops, no raw matchers, no qualifier prefixes in the
-rendered context). Name state collectors for *what* they represent, not *how* they were obtained:
+The `@Test` body and `@ExpandableSentence` bodies read as prose (BP-1, BP-2, BP-5 and BP-6 in
+`SKILL.md`). Name state collectors for *what* they represent:
 
 ```kotlin
 fun theReservationResponse(): StateCollector<ReservationConfirmation> = StateCollector { _ ->
@@ -317,13 +309,12 @@ fun theReservationResponse(): StateCollector<ReservationConfirmation> = StateCol
 }
 ```
 
-`theReservationResponse()`, not `theCapturedReservationResponse()`.
+`theReservationResponse()` names the what; `theCapturedReservationResponse()` names the how.
 
 **Every field-level / value assertion inside a `then` / `thenEventually` / `thenContinually` block
-MUST be wrapped in a private, semantically-named matcher function** so the rendered body reads as
-domain prose. Raw `assertThat(...)` MatcherField flows and raw `shouldBe` **must NOT appear inline
-in the rendered test body** — push the mechanics down into a private receiver function whose name
-*is* the assertion in English. (The `@ExpandableSentence` drill-down of Rule 5 is the same
+is a private, semantically-named matcher function**, so the rendered body reads as prose.
+Raw `assertThat(...)` MatcherField flows and raw `shouldBe` live inside a private receiver
+function whose name *is* the assertion in English. (The `@ExpandableSentence` drill-down of Rule 5 is the same
 discipline for multi-field expansion; this rule covers the single-clause `then`s too.)
 
 The golden's two matchers — a receiver on the request-body type and one on the status type — with
@@ -357,12 +348,11 @@ then(scenario.theReservationResponse()) { theReservationResponseShows(reservatio
 Before handing off to self-review, confirm:
 
 - [ ] Two files: `<Behaviour>Scenario.kt` + `InProcess<Behaviour>Test.kt`.
-- [ ] Every brief literal is a fixture in a `FixtureContainer`, registered via `registerFixtures(...)`.
-- [ ] No brief literal inlined in any rendered position.
-- [ ] Field-level `then`s use `MatcherField … of fixtures(...)` — no whole-body JSON/xmlunit equality.
-- [ ] Every assertion in a `then` / `thenEventually` / `thenContinually` block is wrapped in a private, semantically-named matcher function — no raw `assertThat(...)` or `shouldBe` inline in the rendered body (e.g. `requestsReservationOf(...)`, `shouldBeConfirmed()`).
+- [ ] Every brief literal is a fixture in a `FixtureContainer`, registered via `registerFixtures(...)`, and every rendered position consumes the fixture.
+- [ ] Field-level `then`s use `MatcherField … of fixtures(...)`.
+- [ ] Every assertion in a `then` / `thenEventually` / `thenContinually` block is a private, semantically-named matcher function (e.g. `requestsReservationOf(...)`, `shouldBeConfirmed()`).
 - [ ] Drill-down `then`s use an `@ExpandableSentence` helper with `@RenderedValue` params.
 - [ ] Timing keywords match the brief tags (`then` / `thenEventually` / `thenContinually`).
 - [ ] `SequenceDiagramCapture(bus, …Descriptors())` wired; `kensaReporting()` called in `@BeforeEach`; teardown in `@AfterEach`.
 - [ ] Inventory items reused where present; nothing re-invented.
-- [ ] Test body and expandable bodies read as fluent English; collectors named for *what*, not *how*.
+- [ ] Test body and expandable bodies read as prose; collectors named for *what* they represent.

@@ -75,8 +75,8 @@ extension functions do not — wrap those in a `@RenderedValue` no-arg function 
 
 When two enums share a constant name and Kotlin forces qualification, `OrderStatus.PENDING` in a
 test body renders as just `PENDING` as a value token with the type's simple name as a hover hint.
-Nested objects and sealed-class data objects (`OrderStatus.Pending`) render the same way. Do not
-flag a forced qualifier as noise words, and do not wrap it in a helper just to hide the qualifier.
+Nested objects and sealed-class data objects (`OrderStatus.Pending`) render the same way. A forced
+qualifier is correct as written: leave it in place, unwrapped.
 A qualifier that does not resolve through the file's imports renders as camel-split words.
 
 ## @ExpandableRenderedValue

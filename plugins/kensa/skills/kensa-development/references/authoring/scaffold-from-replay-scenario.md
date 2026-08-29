@@ -1,14 +1,14 @@
 # Scaffold — Kensa test from a saved Replay scenario
 
 A tester walks a Kensa Replay session, saves it as `scenarios/<slug>.yml`, and asks for the test
-that locks the behaviour in. This is the **reverse slurp**: scenario file in, `KensaTest` skeleton out.
+that locks the behaviour in: scenario file in, `KensaTest` skeleton out.
 
 The output is a *skeleton*, not a finished test. Every call site the file cannot resolve is emitted
 as a compiling `TODO(...)` naming exactly what to wire. The skeleton must compile as emitted — a
 skeleton that does not compile is worse than no skeleton.
 
 This is a one-shot transform, not the four-phase pipeline in `overview.md`: the scenario file *is*
-the brief. Do not run intake. Do run the BP rules in `SKILL.md` over the result — the emitted body
+the brief, so intake is skipped. Run the BP rules in `SKILL.md` over the result — the emitted body
 is a rendered context like any other.
 
 ---
@@ -28,7 +28,7 @@ carries `steps[].outcome.verify` (`Passed` / `Failed` / `Skipped` plus a message
 Ask for evidence once if it was not supplied, then proceed without it — the scenario alone is enough
 for a skeleton.
 
-Imports to get right (do not guess):
+Imports:
 
 ```kotlin
 import dev.kensa.Action
@@ -44,8 +44,8 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 ```
 
-`KensaTest` already carries `@ExtendWith(KensaExtension::class)` — do not add it. Any *team*
-extension (the one that starts their stubs) is a TODO comment on the class, not an invented name.
+`KensaTest` already carries `@ExtendWith(KensaExtension::class)`. Any *team* extension (the one
+that starts their stubs) is a TODO comment on the class.
 
 ---
 
@@ -120,8 +120,8 @@ cursor, so the file's list is in insertion order; `phase` is the truth. Within a
 ## Rule 3 — `ref` steps become named TODO call sites
 
 A step id is `<group-slug>.<step-name-slug>`. The team's `ReplaySteps` subclass knows the Kotlin
-`val` behind it (`by prime(…)` / `by send(…)` registers it), but **the file holds only the id** —
-never guess the val name. Emit a private function per distinct ref:
+`val` behind it (`by prime(…)` / `by send(…)` registers it), but **the file holds only the id**,
+so the val name stays a TODO. Emit a private function per distinct ref:
 
 - Name it fluently from the step's `name` and `target`, so the report sentence reads as English.
   Prime → `the<Target><StepName>()`; Send → the step name as a verb phrase (`theOrderIsPlaced()`).
@@ -214,14 +214,14 @@ Use `thenEventually` whenever the assertion is about something the SUT does *aft
 another party (a capture, a downstream request, a queue). Use plain `then` only for a value the send
 itself returned. Replay is asynchronous by nature — when in doubt, `thenEventually`.
 
-Never put a duration literal in the body (`SKILL.md`, async section).
+A duration lives in a private function (`references/dsl.md`).
 
 ---
 
 ## Rule 6 — `pins`, `variables`, `locks`
 
 `pins` are the fixture values the session ran with; `variables` are user-entered values a fixture set
-supplied. Both are test data, so they become fixtures — never inline literals (BP-3).
+supplied. Both are test data, so they become fixtures (BP-3).
 
 - A pin whose key matches a fixture the team already has → a comment naming the fixture and the pinned
   value; the dev decides whether to pin it in the test.
@@ -229,7 +229,7 @@ supplied. Both are test data, so they become fixtures — never inline literals 
   (see `references/fixtures.md`), keyed by the pin name.
 - `locks` have no test equivalent — mention them in the class KDoc and move on.
 
-Do not fabricate a `FixtureContainer` when `pins` and `variables` are both empty.
+A scenario-specific `FixtureContainer` exists only when `pins` or `variables` has entries.
 
 ---
 
@@ -326,5 +326,5 @@ resist filling the TODOs with plausible-looking guesses.
 - [ ] Every `ref` has a comment carrying its id, group and name.
 - [ ] Every `raw` step is a real testkit call, not a TODO, where the payload allows it.
 - [ ] The scenario's `description` drove the `then` placeholder, not `@Notes`.
-- [ ] `pins`/`variables` are fixtures or comments — never inline literals.
+- [ ] `pins`/`variables` are fixtures or comments.
 - [ ] Say plainly, in the handover, which TODOs the dev must fill and in what order.

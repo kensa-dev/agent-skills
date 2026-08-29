@@ -11,9 +11,9 @@ precludes running the application with test/fake generators.
 
 ## Defining CapturedOutputs
 
-**CapturedOutputs must always be defined inside a `CapturedOutputContainer` object and registered
-during initialisation. Never define them elsewhere. Registration is what allows Kensa to give each
-test invocation its own scoped output map — safe for parallel test runs.**
+CapturedOutputs are defined inside a `CapturedOutputContainer` object and the container is
+registered during initialisation. That registration is what gives each test invocation its own
+scoped output map, safe for parallel test runs.
 
 ```kotlin
 object TradeFinanceCapturedOutputs : CapturedOutputContainer {

@@ -1,34 +1,21 @@
 ---
 name: kensa-development
 description: >
-  Review and improve Kensa BDD tests written in Kotlin. Use this skill whenever the user
-  shares a Kensa test file, asks you to review or improve a Kensa test, or mentions Given-When-Then
-  tests in a Kensa project. Kensa tests use the KensaTest interface with given()/whenever()/then()
-  DSL, @RenderedValue, @ExpandableSentence, Fixtures, and produce HTML reports with sequence diagrams.
-  Trigger for: "review this test", "improve this Kensa test", "what's wrong with this test",
-  "make this test more idiomatic", or any time a user pastes Kensa test code.
-  Also AUTHORS new Kensa tests from requirements: trigger for "write a Kensa test for…",
-  "author a test that…", "generate a Kage acceptance test from this brief/ticket", or when given
-  a Given/When/Then brief (inline or a .md file) for a Kensa project.
-  Also SCAFFOLDS a test skeleton from a saved Kensa Replay scenario: trigger for "scaffold a test
-  from this Replay scenario", "turn this scenarios/<slug>.yml into a Kensa test", or when given a
-  Replay scenario/evidence file.
+  Kensa BDD tests in Kotlin: review one the user shares, author one from a brief or ticket,
+  scaffold one from a saved Kensa Replay scenario (scenarios/<slug>.yml), or diagnose failing
+  ones through the kensa MCP server (list_failures, failure_evidence). Trigger on Kensa test
+  code, Given/When/Then briefs for a Kensa project, Replay scenario files, and red Kensa builds.
 ---
 
-# Kensa Test Reviewer
-
-You are an expert in writing idiomatic Kensa BDD tests. Review tests, identify violations, and
-produce improved versions with clear explanations.
-
-## What is Kensa?
+# Kensa Test Development
 
 Kensa is a Kotlin BDD framework where Given-When-Then structure is written directly in code (no
 Gherkin). It parses test source via ANTLR to render sentences in HTML reports. **Critical: the
 report shows actual source tokens in test bodies and `@ExpandableSentence` bodies — so everything
-in those rendered contexts must read as fluent English.**
+in those rendered contexts must read as prose.**
 
 **The audience is non-developers.** BAs, testers, and product owners read these reports to verify
-behaviour and design future APIs. The test body must read as domain prose. Per-invocation render
+behaviour and design future APIs. The test body reads as prose. Per-invocation render
 cost also scales with the AST in those contexts — bigger test bodies mean slower reports.
 Readability and performance pull the same way; every best practice below keeps the body small,
 semantic, and free of structural detail.
@@ -38,8 +25,8 @@ semantic, and free of structural detail.
 Decide which mode you are in before doing anything else:
 
 - **Review** — the user shared an existing test and wants critique/improvement.
-  Continue with the best-practice rules below (the reviewer flow). This is the default
-  when test code is present and no authoring request is made.
+  Follow How to Review below. This is the default when test code is present and no authoring
+  request is made.
 - **Author** — the user wants a NEW test written from requirements (a brief, a ticket,
   a Given/When/Then description, or "write a test that…"). Follow
   `references/authoring/overview.md`, which runs a four-phase pipeline and reuses the
@@ -47,11 +34,45 @@ Decide which mode you are in before doing anything else:
 - **Scaffold** — the user pastes or points at a saved Kensa Replay scenario
   (`scenarios/<slug>.yml`, or a session/evidence export) and wants the test that locks in what
   the tester walked through. Follow `references/authoring/scaffold-from-replay-scenario.md`.
-  This is a one-shot transform, not the authoring pipeline: the scenario file is the brief, so
-  skip intake. Run the review rules over the emitted skeleton.
+- **Diagnose** — tests have failed and the user wants to know why. Follow the triage steps in
+  `references/mcp-tools.md`.
 
 If both could apply (e.g. "rewrite this test to also cover X"), prefer Author — you are
 producing new test code — but run the review rules over the result.
+
+## How to Review
+
+1. Identify rendered contexts: test method bodies and `@ExpandableSentence` bodies. The private
+   functions below them are where BP-2 and BP-5 violations sit.
+2. Load any on-demand reference files relevant to what's in the test.
+3. Check each best practice in order, noting specific line violations.
+4. Produce a concise violation list before showing the improved code.
+5. Rewrite the test applying all improvements.
+6. Under Key Changes, one line per violation fixed, naming the rule and why the test reads better.
+
+If the user provides production service contracts (JSON/XML schemas or example payloads), use them
+to make fixtures and request builders realistic and type-accurate.
+
+## Review Output Format
+
+```
+## Violations Found
+
+1. [BP-2] `aClientSubmitsAnLcApplicationFor` is @ExpandableSentence returning an Action — lambda body rendered when expanded
+2. [BP-3] `Holder` carries test data (applicantId, expectedPrefix) — should be Fixtures
+3. [BP-5] `shouldBeInstanceOf<LcApplicationResult.Approved>()` exposed in rendered then() block
+4. [BP-7] `then` block nests 7 levels deep with 30+ inline `item { shouldBe(...) }` — extract a flat matcher DSL (`thatHas(field of value, ...)`)
+
+## Improved Test
+
+[full rewritten file]
+
+## Key Changes
+
+- [brief explanation of each change and why it matters]
+```
+
+---
 
 ## KensaTest Interface
 
@@ -67,13 +88,11 @@ instance — never shared across tests.
 
 ### Supported API (0.9.0 and later)
 
-Kensa froze its public API ahead of 1.0. `dev.kensa.parse`, `dev.kensa.state` (except
-`SetupStrategy`), `dev.kensa.output`, `dev.kensa.service` and `dev.kensa.util` are `internal`;
-anything marked `@KensaInternalApi` is an opt-in *error* meant for framework adapters only, and
-`@KensaExperimental` marks surfaces still being designed. A test that imports from those packages
-or opts in to `KensaInternalApi` is coupled to plumbing: flag it and rewrite against `KensaTest`,
-`Action`, `StateCollector`, `SetupStep`, fixtures and outputs. Upgrade core and the framework
-adapter together (use `kensa-bom`).
+Kensa froze its public API ahead of 1.0; the compiler marks the rest `internal` or behind
+`@KensaInternalApi` (framework adapters only) and `@KensaExperimental`. A test that opts in to
+`KensaInternalApi` is coupled to plumbing: flag it and rewrite against `KensaTest`, `Action`,
+`StateCollector`, `SetupStep`, fixtures and outputs. Upgrade core and the framework adapter
+together (use `kensa-bom`).
 
 ## On-Demand References
 
@@ -83,24 +102,21 @@ Read these files only when the relevant topic appears in the test being reviewed
 |---|---|
 | `interactions.capture(...)`, sequence diagrams, `from().to().with()` | `references/interactions.md` |
 | `SetupStep`, `SetupSteps`, `KotestSetupStep`, `buildGivens`, `buildActions`, `@UseSetupStrategy` | `references/setup-steps.md` |
-| `FixtureContainer`, multi-dependency fixtures, `by fixtures(fx)`, `givens[...]` | `references/fixtures.md` |
+| `FixtureContainer`, multi-dependency fixtures, `by fixtures(fx)`, `givens[...]`, request builders | `references/fixtures.md` |
 | `CapturedOutputContainer`, `capturedOutput<T>`, `outputs[key]`, `registerCapturedOutputs` | `references/captured-outputs.md` |
 | `@RenderedValue`, `@RenderedValueWithHint`, `@RenderedValueContainer` (field or parameter, `useCase.stub.sends(...)` chains), `@ExpandableRenderedValue`, qualified enum constants, `@Issue`, `@Epic`, `@Notes` | `references/rendered-value.md` |
+| `thenEventually`, `thenContinually`, `andEventually`, timeouts, negative assertions, `Action` and `StateCollector` shapes, fixture registration | `references/dsl.md` |
 | `withTestContext`, `TestContextUtil`, `@OptIn(KensaInternalApi::class)` | `references/setup-steps.md` (Legacy section) |
-| Authoring a test from a brief / requirements / ticket | `references/authoring/overview.md` |
-| A Replay scenario file (`scenarios/<slug>.yml`), `ReplaySteps`/`ReplayScenarios` ids, Replay evidence | `references/authoring/scaffold-from-replay-scenario.md` |
+| kensa MCP tools (`list_failures`, `failure_evidence`, `await_results`, `style_profile`) in the tool list, or running tests after authoring | `references/mcp-tools.md` |
 
 ## The Best Practices
 
-### BP-1: Rendered code must read as fluent English
+### BP-1: Rendered code reads as prose
 
-Rendered contexts = test method bodies + `@ExpandableSentence` bodies.
-
-**Never allow:**
-- Variable assignments: `val response = client(request)`
-- Loops: `for (item in list) { ... }`
-- Complex chained expressions with intermediate results
-- Raw lambda bodies inline
+Rendered contexts = test method bodies + `@ExpandableSentence` bodies. A rendered context holds
+only prose calls: `given`/`and`/`whenever`/`then` with named helpers. Assignments
+(`val response = client(request)`), loops, chained expressions with intermediate results and
+inline lambda bodies move into private functions, where only the function name is rendered.
 
 **Good:**
 ```kotlin
@@ -113,14 +129,11 @@ fun canIssueAnLcWhenCreditAndSanctionsArePositive() {
 }
 ```
 
-### BP-2: Action lambdas must not appear in rendered contexts
+### BP-2: Action lambdas live in private functions that return the Action
 
-Action lambdas contain implementation code — keep them out of test bodies and `@ExpandableSentence` bodies.
-
-**Where NOT to put them:** inline in test body, or inside `@ExpandableSentence` functions.
-
-**Where to put them:** in a regular private function that *returns* the Action — only the function
-name appears in the report.
+Action lambdas contain implementation code. Each one lives in a regular private function that
+*returns* the Action, so the report shows the function name and nothing of the body. Inline in a
+test body or inside an `@ExpandableSentence` function, the lambda body is rendered.
 
 **Bad** — lambda rendered in @ExpandableSentence:
 ```kotlin
@@ -141,8 +154,9 @@ private fun aClientSubmitsAnLcApplication() = Action<ActionContext> { (_, intera
 }
 ```
 
-**When IS @ExpandableSentence appropriate?** Only for multi-step *assertion* sequences where the
-individual steps should be visible on expansion. Never on a function that creates/returns an Action.
+**When IS @ExpandableSentence appropriate?** For multi-step *assertion* sequences where the
+individual steps should be visible on expansion. A function that returns an Action is BP-2's
+private function, unannotated.
 
 ```kotlin
 @ExpandableSentence
@@ -174,9 +188,8 @@ val expectedState = OrderState.Confirmed
 private lateinit var result: ServiceResponse
 ```
 
-Only use a `@RenderedValueContainer` inner class when many mutable fields are repeated across
-multiple tests. The annotation also goes on a test-method parameter (a `@MethodSource` use-case
-object) so chains like `useCase.stub` render as values; see `references/rendered-value.md`.
+`@RenderedValueContainer`, for a holder of several mutable outputs or a `@MethodSource` use-case
+parameter, is in `references/rendered-value.md`.
 
 ### BP-4: Build a composable toolbox — don't repeat setup logic
 
@@ -192,23 +205,10 @@ A well-designed test suite has:
 - A `SetupStep` class providing named entry points like `theOrderHasProgressedTo(state)`,
   built from state transitions the app must be driven through
 
-**Extension functions for request builders** — when a request is assembled from multiple fixtures,
-define it as an extension function on `Fixtures` (or `KensaTest`/`FixturesAndOutputs`), *not*
-inside the `FixtureContainer`. These typically use a builder and accept an optional lambda for
-test-specific overrides:
-
-```kotlin
-// In a dedicated object — keeps FixtureContainer clean
-object RequestBuilders {
-    fun Fixtures.aServiceRequest(block: ServiceRequestBuilder.() -> Unit = {}) =
-        ServiceRequestBuilder().apply {
-            withCorrelationId = get(CorrelationIdFx)
-            withCustomerId = get(CustomerIdFx)
-            withProduct = get(ProductFx)
-            apply(block)               // test can override individual fields
-        }.build()
-}
-```
+**Request builders** assembled from several fixtures are extension functions on `Fixtures` (or
+`KensaTest`/`FixturesAndOutputs`) in a dedicated object, with an override lambda for
+test-specific fields; the shape is in `references/fixtures.md`, Extension Functions for Request
+Builders.
 
 **`@Sources`** — when test bodies reference field descriptor types from classes outside the test
 module (e.g. a shared assertion-helper module defines the field matchers used in `thatHas(...)` calls),
@@ -222,8 +222,8 @@ abstract class MyDomainTest : KensaTest, WithKotest
 
 ### BP-5: Wrap raw assertions in semantic functions
 
-Never expose implementation matchers in rendered contexts. The report should read: "should be approved",
-not the underlying type assertion.
+An assertion in a rendered context is a semantic function; the matcher mechanics live behind its
+name. The report reads "should be approved".
 
 **Bad:**
 ```kotlin
@@ -245,20 +245,18 @@ private fun shouldBeApproved() = Matcher<LcApplicationResult> { result ->
 
 ### BP-6: Use typed context objects and interface mixins for scenario helpers
 
-Rendered test bodies must read as fluent English. That means **no qualifier prefixes**:
+Helpers are called bare in rendered bodies, because `with(context)` brings them into scope:
 
 ```kotlin
-// Bad — "steps." breaks fluency in the report
+// "steps." is plumbing in the report
 given(steps.theOrderHasProgressedTo(OrderState.Dispatched))
 whenever(orchestrationStub.sends(aPlaceOrderRequest()))
 
-// Good — reads as natural prose
+// prose
 given(theOrderHasProgressedTo(OrderState.Dispatched))
 whenever(orchestration.sends(aPlaceOrderRequest()))
 ```
-
-The qualifier disappears because `with(context)` brings all helpers into scope as bare function
-calls. Named stubs (`orchestration`, `supplier`, etc.) live on the context, so `orchestration.sends(...)`
+ Named stubs (`orchestration`, `supplier`, etc.) live on the context, so `orchestration.sends(...)`
 reads naturally in the report as a subject performing an action.
 
 The mechanism: define a typed *test context* holding all stubs/services, expose helpers as
@@ -357,7 +355,7 @@ then(courier.hasDispatched(aShipment(
 each assertion costs one parsed token in the body. The report reads as one sentence and POs can
 still scan the field list.
 
-**When fields aren't domain-important — use `@ExpandableRenderedValue`.** Sometimes a message has
+**When the collection is the unit of meaning — use `@ExpandableRenderedValue`.** Sometimes a message has
 30 fields where no single one stands on its own; what matters is verifying the full set. The
 method does the comparison; only its return value (a list/set/map) is rendered:
 
@@ -386,170 +384,3 @@ is fine at any depth — every layer (`thenEventually`, `thatHas`, `.and(...)`) 
 step. Nested raw lambdas and repeated identical shapes are the problem.
 
 Each is a cue to extract a flat matcher DSL.
-
----
-
-## How to Review
-
-1. Read the full file including imports, companion object, and all private functions.
-2. Identify rendered contexts: test method bodies and `@ExpandableSentence` bodies.
-3. Load any on-demand reference files relevant to what's in the test.
-4. Check each best practice in order, noting specific line violations.
-5. Produce a concise violation list before showing the improved code.
-6. Rewrite the test applying all improvements.
-7. Explain key changes briefly — focus on *why* each change improves the test.
-
-If the user provides production service contracts (JSON/XML schemas or example payloads), use them
-to make fixtures and request builders realistic and type-accurate.
-
-## Review Output Format
-
-```
-## Violations Found
-
-1. [BP-2] `aClientSubmitsAnLcApplicationFor` is @ExpandableSentence returning an Action — lambda body rendered when expanded
-2. [BP-3] `Holder` carries test data (applicantId, expectedPrefix) — should be Fixtures
-3. [BP-5] `shouldBeInstanceOf<LcApplicationResult.Approved>()` exposed in rendered then() block
-4. [BP-7] `then` block nests 7 levels deep with 30+ inline `item { shouldBe(...) }` — extract a flat matcher DSL (`thatHas(field of value, ...)`)
-
-## Improved Test
-
-[full rewritten file]
-
-## Key Changes
-
-- [brief explanation of each change and why it matters]
-```
-
----
-
-## Kensa DSL Quick Reference
-
-### Test structure
-
-The preferred pattern is an abstract base class per domain that consolidates the extension,
-setup strategy, and framework interfaces — keeping concrete test classes focused on tests only:
-
-```kotlin
-// Base class — defined once per domain
-@ExtendWith(MyExtension::class)
-@UseSetupStrategy(SetupStrategy.Grouped)
-@Sources(MyDomainFields::class)
-abstract class MyDomainTest : KensaTest, WithKotest
-
-// Concrete test class — extends the base, nothing else needed
-class MyFeatureTest : MyDomainTest() {
-    @Test
-    fun canDoSomething() {
-        given(somePrerequisite())
-        and(anotherPrerequisite())
-        whenever(anActionOccurs())
-        then(theResult(), shouldSucceed())
-    }
-}
-```
-
-### Synchronous vs asynchronous assertions
-
-Use `then`/`and` for results that are immediately available after the action. Use `thenEventually`
-and `andEventually` when the system under test processes asynchronously (message-driven, event-sourced,
-parallel workers) — these retry the assertion until it passes or a timeout is reached.
-
-`thenContinually` asserts that the condition remains true throughout a polling window — use when
-you need to verify something *stays* in a given state rather than *eventually reaches* it.
-
-```kotlin
-// Synchronous — result available immediately
-then(theHttpStatus(), shouldBe200())
-and(theResponseBody(), shouldContainOrderId())
-
-// Asynchronous with default timeout — prefer this when the default is sufficient
-thenEventually(theOrderStatus(), shouldBePending())
-
-// Stable state — must hold throughout the window
-thenContinually(theCircuitBreakerState(), shouldBeClosed())
-```
-
-When **several independent conditions** must hold, use the block form — do not chain separate
-`thenEventually`/`andEventually` calls, which poll sequentially and consume the timeout budget
-one assertion at a time. The block polls all assertions in parallel within a single window:
-
-```kotlin
-thenEventually {
-    then(theOrderStatus(), shouldBeDispatched())
-    and(theAuditLog(), shouldContainDispatchEntry())
-}
-```
-
-`thenEventually { }` locks in each assertion as soon as it passes; `thenContinually { }` requires
-every assertion to hold on every tick. If several assertions time out, the failures are aggregated
-into one error listing each. A window may be passed as the first argument —
-`thenEventually(2.seconds) { ... }` — subject to the duration rule below.
-
-**Negative assertions** ("no cancellation event is ever received") must not use `thenEventually`:
-it passes on the first poll, before a late event could arrive. Use `then` when a later positive
-assertion already anchors that the system has finished, otherwise `thenContinually`. For "no
-element matching" over a collection use `noneMatching(matcher)` from
-`dev.kensa.kotest.testsupport.collections` (hamkrest: `dev.kensa.hamkrest.testsupport.collections`);
-it ignores unrelated elements and fails listing the offending ones. `thenContinually` takes an
-explicit window like `thenEventually` (`thenContinually(2.seconds, collector, matcher)`, subject
-to the duration rule below) and also takes a `ThenSpec` directly, mirroring `then(spec)` and
-`thenEventually(spec)`.
-
-```kotlin
-// Bad — passes trivially on the first empty poll
-thenEventually(theCapturedEvents(), noneMatching(aCancelledOrderEvent()))
-
-// Good — must hold on every tick of the window
-thenContinually(theCapturedEvents(), noneMatching(aCancelledOrderEvent()))
-```
-
-When a non-default timeout is needed, **never put the duration literal in the test body** — it reads as a plumbing detail. Push the whole call into a private function:
-
-```kotlin
-// Bad — raw duration exposed in rendered context
-thenEventually(10.seconds, allNotifications(), shouldShowBothSuppliersCompleted())
-
-// Good — duration hidden, test body stays fluent
-thenEventuallyAllNotifications(shouldShowBothSuppliersCompleted())
-
-private fun thenEventuallyAllNotifications(matcher: Matcher<List<Notification>>) =
-    thenEventually(10.seconds, allNotifications(), matcher)
-```
-
-### Action functions
-```kotlin
-private fun somePrerequisite() = Action<GivensContext> { (fixtures) ->
-    // setup using fixtures[myFixture]
-}
-
-private fun anActionOccurs() = Action<ActionContext> { (fixtures, interactions) ->
-    holder.result = service.call(fixtures[myParam])
-}
-```
-
-### State collectors
-```kotlin
-private fun theResult() = StateCollector { holder.result }
-private fun theField() = StateCollector { fixtures[myFixture] }
-```
-
-### Fixtures
-```kotlin
-object MyFixtures : FixtureContainer {
-    val MyValue = fixture("My Value") { "some-value" }
-    val Derived = fixture("Derived Value", MyValue) { v -> buildThing(v) }
-    // Up to 3 dependencies supported; type SecondaryFixture<T> for explicit typing:
-    val Composite: SecondaryFixture<String> = fixture("Composite", PartA, PartB, PartC) { a, b, c -> "$a/$b/$c" }
-}
-```
-
-Register in the extension companion:
-```kotlin
-companion object {
-    init {
-        registerFixtures(MyFixtures)
-        registerCapturedOutputs(MyCapturedOutputs)
-    }
-}
-```

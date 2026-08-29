@@ -1,4 +1,4 @@
-# Intake — Brief Format and No-Slop Gate
+# Intake — Brief Format and Completeness Gate
 
 Intake is a conversation. Its job is to produce a *complete brief* — nothing more. The brief is disposable working material, never saved as a maintained spec (that would re-introduce the drift problem Kensa exists to avoid). Proceed to Introspect only when every required field is present.
 
@@ -27,7 +27,7 @@ If the user gives prose, a ticket, or a vague description, **derive the brief sh
 
 ---
 
-## No-slop gate — completeness checklist
+## Completeness gate
 
 The brief is *complete enough to author* only when **all** of the following are satisfied:
 
@@ -36,18 +36,18 @@ The brief is *complete enough to author* only when **all** of the following are 
 3. **When** — at least one concrete interaction under test (not "something happens").
 4. **Then with declared timing** — at least one outcome with an explicit timing (`immediate`, `eventually`, or `continually`).
 
-If anything is missing, **interview the user**: ask the smallest set of questions to fill the gaps. Do **not** generate until the gate is satisfied. Never invent missing requirements.
+If anything is missing, **interview the user**: ask the smallest set of questions to fill the gaps. Every requirement comes from the user, and generation waits for the gate.
 
 ---
 
 ## Timing is declared, not guessed
 
-If a `then` outcome's timing is unstated and could plausibly be asynchronous, **ask**. Do not silently default to `immediate`. The timing choice maps directly to a different DSL call (`then` vs `thenEventually` vs `thenContinually`) — getting it wrong changes the test's semantics.
+If a `then` outcome's timing is unstated and could plausibly be asynchronous, **ask**. The timing choice maps directly to a different DSL call (`then` vs `thenEventually` vs `thenContinually`) — getting it wrong changes the test's semantics.
 
 ---
 
 ## Interview discipline
 
-- Ask one topic at a time; do not front-load a list.
+- Ask one topic at a time.
 - When the user answers, reflect the updated brief back and confirm before continuing.
-- Stop asking once the gate is satisfied — do not over-specify.
+- Stop asking once the gate is satisfied.

@@ -8,11 +8,10 @@ properties for test data, making test classes smaller and easier to understand a
 
 ## Defining Fixtures
 
-**Fixtures must always be defined inside a `FixtureContainer` object. Never define them elsewhere
-(e.g. companion objects, top-level, or directly in test classes).**
-
-Registration of the container during initialisation is what allows Kensa to give each test
-invocation its own scoped fixture values — even when tests run in parallel.
+Fixtures are defined inside a `FixtureContainer` object and the container is registered during
+initialisation. That registration is what gives each test invocation its own scoped fixture
+values, even when tests run in parallel; a fixture declared anywhere else (companion object,
+top level, test class) is outside it.
 
 ### Simple fixture
 ```kotlin
@@ -105,11 +104,11 @@ then renders as a fixture token, styled and highlighted exactly like `fixtures[r
 `thenEventually { }` / `thenContinually { }` blocks.
 
 ### Fixture keys must be globally unique across all registered containers.
-Use descriptive keys like `"LCApplicationRequest"` not `"Request"`.
+Use descriptive keys like `"LCApplicationRequest"` rather than `"Request"`.
 
 ## FixtureContainer
 
-All fixtures must be defined inside a `FixtureContainer` object:
+The container:
 
 ```kotlin
 object TradeFinanceFixtures : FixtureContainer {
@@ -202,24 +201,15 @@ end of test for rendering:
 private lateinit var result: LcApplicationResult
 ```
 
-Only use a `@RenderedValueContainer` inner class when multiple mutable fields are repeated across
-several tests — the annotation makes each property render when mentioned in the test body:
-```kotlin
-@RenderedValueContainer
-private inner class Holder {
-    lateinit var result: LcApplicationResult
-    lateinit var lcNumber: String
-}
+Several mutable outputs shared across tests go in a `@RenderedValueContainer`; see
+`rendered-value.md`.
 
-private lateinit var holder: Holder
-```
 ## Extension Functions for Request Builders
 
-`FixtureContainer` is only for fixture *definitions* — including `@Fixture` factory functions
-and `parameterFixture`s. When you need to assemble a complex request
-object from multiple fixtures (e.g., a service instruction that populates a dozen fields), define
-it as an extension function on `Fixtures`, `KensaTest`, or `FixturesAndOutputs` — not inside the
-container. Put these in a dedicated object, not the companion object or test class.
+`FixtureContainer` holds fixture *definitions* only, including `@Fixture` factory functions
+and `parameterFixture`s. A complex request object assembled from several fixtures (a service
+instruction that populates a dozen fields) is an extension function on `Fixtures`, `KensaTest`,
+or `FixturesAndOutputs`, kept in a dedicated object.
 
 The pattern uses a builder with an optional override block so individual tests can vary specific
 fields without duplicating the whole setup:
@@ -257,7 +247,7 @@ still functional but deprecated — flag any use of `givens[...]` in a test as a
 migrate it to `Fixtures`.
 
 ```kotlin
-// Deprecated — do not use
+// Deprecated
 givens["applicantId"] = "CORP-001"
 val id = givens["applicantId"]
 

@@ -18,16 +18,17 @@ Dispatch a subagent with NO generation context. Give it:
 - The complete brief (acceptance criteria, actor names, field names).
 - The inventory snapshot returned by introspect (available infrastructure, fixture names, interaction paths).
 - The best-practice rules from `SKILL.md` (copy the "The Best Practices" section verbatim, or pass the file path and instruct the subagent to read it).
-- The on-demand references relevant to what appears in the test (fixtures, interactions, rendered-value, setup-steps, captured-outputs — whichever apply).
+- `references/dsl.md`, which carries the timeout and negative-assertion rules the best practices point at.
+- The other on-demand references relevant to what appears in the test (fixtures, interactions, rendered-value, setup-steps, captured-outputs — whichever apply).
 
-Do NOT pass reasoning, intermediate drafts, rationale, or any other generation context. The subagent must form its own judgment.
+The subagent receives exactly the items above and forms its own judgment.
 
 Instruct the subagent to:
 
 1. Read the test in full.
 2. Identify every rendered context (test method bodies, `@ExpandableSentence` bodies).
-3. Apply each best practice (BP-1 through BP-7) and the golden-grade checks below.
-4. Report concrete violations only — file and approximate line, which rule, what specifically is wrong. No praise, no suggestions, no rewrites. If there are no violations, say "zero violations."
+3. Apply each best practice (BP-1 through BP-7) and the authoring checks below.
+4. Report concrete violations only — file and approximate line, which rule, what specifically is wrong. If there are no violations, say "zero violations."
 
 ---
 
@@ -39,7 +40,7 @@ When the subagent reports violations:
 2. Re-dispatch the reviewer subagent on the updated files, again with no generation context.
 3. Repeat until the reviewer reports zero violations.
 
-Fixes are applied in the main context — not by the reviewer subagent. The reviewer only judges; it does not write.
+The main context applies the fixes; the reviewer judges.
 
 When the reviewer reports zero violations, self-review is complete. Deliver the final files to the user.
 
@@ -47,7 +48,7 @@ When the reviewer reports zero violations, self-review is complete. Deliver the 
 
 ## What to check especially
 
-These are the golden-grade flaws real reviews have caught. The reviewer subagent must check all of them explicitly.
+These are the flaws real reviews have caught in authored tests. The reviewer checks every one.
 
 ### Dead fixtures
 
@@ -57,7 +58,7 @@ Flag any fixture that is declared but whose value is never asserted.
 
 ### Implementation-language names in rendered positions
 
-Names in test method bodies and `@ExpandableSentence` bodies appear verbatim in HTML reports read by non-developers. Test-infrastructure language must not leak into those names.
+Names in test method bodies and `@ExpandableSentence` bodies appear verbatim in HTML reports read by non-developers, so they are domain language.
 
 Flag any of:
 
@@ -67,7 +68,7 @@ Flag any of:
 - "actual" / "expected" as bare prefixes — e.g. `theActualStatus`
 - Any other implementation/test-infra noun where a domain noun would serve
 
-The rule: if a BA reading the report sentence would not recognise the word as domain language, it does not belong in a rendered position.
+The test: a BA reading the report sentence recognises every word as domain language.
 
 ### Whole-body JSON or XML comparison
 
@@ -79,9 +80,9 @@ Flag any `shouldBe(rawJson)`, `assertEquals(xmlString, ...)`, or equivalent whol
 
 Check that fixture values are not merely set up in a `given` and then silently dropped. Trace each fixture key from definition through to where the system under test uses it (the action) and then to what the test asserts about the outcome. A fixture that drives an input but whose effect is never verified is a coverage gap.
 
-### Test body and @ExpandableSentence bodies read as fluent English
+### Test body and @ExpandableSentence bodies read as prose
 
-Read every rendered context aloud as a sentence. It should parse as natural English prose a BA would write in a specification. Flag:
+Read every rendered context aloud as a sentence a BA would write in a specification. Flag:
 
 - Variable assignments in the body (`val x = ...`)
 - Loops or conditionals
@@ -102,8 +103,8 @@ zero violations
 or a numbered list:
 
 ```
-1. [BP-x / golden-grade check name] <file>:<approx line> — <what is wrong, concise>
+1. [BP-x / authoring check name] <file>:<approx line> — <what is wrong, concise>
 2. ...
 ```
 
-No prose, no rewrites, no praise. Violations only.
+Violations only.

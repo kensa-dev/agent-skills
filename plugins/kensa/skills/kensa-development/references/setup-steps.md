@@ -137,12 +137,9 @@ class OrderSetupSteps(
 }
 ```
 
-Tests compose from the toolbox — each test reads clearly because it names *what* state it needs,
-not *how* to reach it. Crucially, **the toolbox must be reachable without a qualifier prefix** in
-the rendered test body, so `given(theOrderHasProgressedTo(OrderState.Dispatched))` reads as fluent
-English rather than `given(steps.theOrderHasProgressedTo(...))` which breaks the sentence.
-
-The idiomatic way to achieve this is via the **context mixin pattern** (see BP-6 in SKILL.md):
+Tests compose from the toolbox — each test names *what* state it needs. The toolbox is called
+bare in the rendered body (`given(theOrderHasProgressedTo(OrderState.Dispatched))`), through the
+**context mixin pattern** (BP-6 in SKILL.md):
 the `SetupSteps` class is held on the typed test context, and its entry-point functions are
 re-exposed as bare extension functions on the context interface. The test calls them unqualified
 inside `with(context) { ... }`:

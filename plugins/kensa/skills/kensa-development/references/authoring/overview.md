@@ -25,28 +25,28 @@ Phases run strictly in sequence:
 
 3. **Generate** — the main context holds both the complete brief and the inventory and uses them together to emit the test. See `generate-kage-acceptance.md` for the Kage acceptance shape.
 
-4. **Self-review** — the main context dispatches a second subagent to critique the emitted test against the brief and the inventory. The subagent returns a list of issues (if any). The main context applies fixes directly; it does not re-dispatch for a second review cycle unless the changes are substantial.
+4. **Self-review** — the main context dispatches a second subagent to critique the emitted test against the brief and the inventory. The subagent returns a list of issues; the main context applies the fixes and re-dispatches until the reviewer reports zero violations (`self-review.md`).
 
 ---
 
 ## Hard gate
 
-**Never proceed to introspect or generate until intake reports the brief is complete.**
-
-If the user's request is vague, ambiguous, or missing required fields, stay in intake. Ask targeted questions one at a time; do not front-load a list of questions. A test built on incomplete requirements will not reflect the intended behaviour — no amount of good implementation recovers a bad brief.
-
-See `intake.md` for the completeness checklist.
+**Introspect and generate start only when intake reports the brief complete.** A vague or
+incomplete request stays in intake, one question at a time (`intake.md`). A test built on
+incomplete requirements will not reflect the intended behaviour.
 
 ---
 
-## Scope (increment 1)
+## Scope
 
-Only the **Kage acceptance** shape is supported in this increment.
-
-Before proceeding past intake, the introspect subagent MUST confirm that the project has Kage acceptance infrastructure: a `:kage-acceptance`-style Gradle module (or equivalent), an http-stub plugin, and a Kage plugin wired into the test build. If that infrastructure is absent, report the gap clearly and stop — do not fabricate a Pattern-A toolbox test or any other shape as a substitute.
+Only the **Kage acceptance** shape is supported: Kage is Kensa's acceptance-test harness
+(https://kensa.dev/kage), which gives a project its http stubs, Replay scenarios and a
+`:kage-acceptance` module. Introspect gates on that infrastructure (`introspect.md`, Kage
+acceptance gate).
 
 ---
 
-## Graceful degradation
+## With the kensa MCP server
 
-Introspect is "ask for the inventory." Today that means dispatching a subagent which reads the codebase and returns structured text (`introspect.md` specifies what to collect and how to format the response). When a `kensa mcp` server exists it will answer the same inventory questions directly, removing the need for the subagent entirely. The generate phase consumes the inventory as structured text regardless of how it was produced — it does not need to know which path was used.
+When the server is registered, introspect starts from `style_profile` (`introspect.md`, MCP head
+start) and authoring ends by confirming the new class green (`../mcp-tools.md`, Authoring).
