@@ -2,9 +2,10 @@
 name: kensa-development
 description: >
   Kensa BDD tests in Kotlin: review one the user shares, author one from a brief or ticket,
-  scaffold one from a saved Kensa Replay scenario (scenarios/<slug>.yml), or diagnose failing
-  ones through the kensa MCP server (list_failures, failure_evidence). Trigger on Kensa test
-  code, Given/When/Then briefs for a Kensa project, Replay scenario files, and red Kensa builds.
+  scaffold one from a saved Kensa Replay scenario (scenarios/<slug>.yml), diagnose failing
+  ones through the kensa MCP server (list_failures, failure_evidence), or iterate a story
+  red to green test-first. Trigger on Kensa test code, Given/When/Then briefs for a Kensa
+  project, Replay scenario files, red Kensa builds, and "begin a Kensa TDD iteration".
 ---
 
 # Kensa Test Development
@@ -36,9 +37,13 @@ Decide which mode you are in before doing anything else:
   the tester walked through. Follow `references/authoring/scaffold-from-replay-scenario.md`.
 - **Diagnose** — tests have failed and the user wants to know why. Follow the triage steps in
   `references/mcp-tools.md`.
+- **Iterate** — "begin a Kensa TDD iteration for <story>", "do the story with Kensa", or a
+  story to implement test-first: author the acceptance test, drive it red to green against
+  the implementation, finish with the bundle clean. Follow `references/iterate.md`.
 
 If both could apply (e.g. "rewrite this test to also cover X"), prefer Author — you are
-producing new test code — but run the review rules over the result.
+producing new test code — but run the review rules over the result. A story that also asks
+for the implementation is Iterate, which runs Author as its first step.
 
 ## How to Review
 
@@ -108,6 +113,7 @@ Read these files only when the relevant topic appears in the test being reviewed
 | `thenEventually`, `thenContinually`, `andEventually`, timeouts, negative assertions, `Action` and `StateCollector` shapes, fixture registration | `references/dsl.md` |
 | `withTestContext`, `TestContextUtil`, `@OptIn(KensaInternalApi::class)` | `references/setup-steps.md` (Legacy section) |
 | kensa MCP tools (`list_failures`, `failure_evidence`, `await_results`, `style_profile`) in the tool list, or running tests after authoring | `references/mcp-tools.md` |
+| "begin a Kensa TDD iteration", a story to implement test-first | `references/iterate.md` |
 
 ## The Best Practices
 
