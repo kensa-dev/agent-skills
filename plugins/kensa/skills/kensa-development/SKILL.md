@@ -112,7 +112,7 @@ Read these files only when the relevant topic appears in the test being reviewed
 | `@RenderedValue`, `@RenderedValueWithHint`, `@RenderedValueContainer` (field or parameter, `useCase.stub.sends(...)` chains), `@ExpandableRenderedValue`, qualified enum constants, `@Issue`, `@Epic`, `@Notes` | `references/rendered-value.md` |
 | `thenEventually`, `thenContinually`, `andEventually`, timeouts, negative assertions, `Action` and `StateCollector` shapes, fixture registration | `references/dsl.md` |
 | `withTestContext`, `TestContextUtil`, `@OptIn(KensaInternalApi::class)` | `references/setup-steps.md` (Legacy section) |
-| kensa MCP tools (`list_failures`, `failure_evidence`, `await_results`, `style_profile`) in the tool list, or running tests after authoring | `references/mcp-tools.md` |
+| kensa MCP tools (`list_failures`, `failure_evidence`, `suite_summary`, `await_results`, `style_profile`) in the tool list, or running tests after authoring | `references/mcp-tools.md` |
 | "begin a Kensa TDD iteration", a story to implement test-first | `references/iterate.md` |
 
 ## The Best Practices

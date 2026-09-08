@@ -8,8 +8,11 @@ With no `kensa` tools in the tool list, the same facts are in the bundle Kensa w
 
 - `bundle_dir` is omitted when `.kensa-properties` declares one test folder, which is the normal case.
 - `style_profile` takes the module holding the tests as `project_dir`, and reports the framework, fixture containers, matcher fields (typed field descriptors such as `JsonTextField("/item")`), stub helpers and conventions.
-- `list_tests` inlines every class and child; for triage `list_failures` is the entry point.
-- `get_test` renders sentences as text; `raw: true` is for a field the rendered form drops.
+- `suite_summary` answers questions about the run as a whole in one call: run window and duration, class and method counts by state, duration buckets, the slowest methods, failure ids, counts by tag and package, participants. Its numbers match the report's overview page. Use it before `list_tests` when the question is how long, how many, or what was slow.
+- `list_tests` returns one row per class with `methods` counts and `elapsedMs`; `children: true` adds the method rows. For triage `list_failures` is the entry point.
+- `get_test` renders sentences as text; a `<class>:<method>` id returns that method only. `raw: true` is for a field the rendered form drops, and always returns the whole class file.
+- `captured_interactions` caps each captured value at `max_value_chars` (default 4000) and marks a cut value with `truncated: true` and `fullLength`; pass `-1` for the whole body.
+- A tool list without `suite_summary` is a Kensa CLI before 0.9.4: `list_tests` then inlines every class and child, `get_test` ignores the method part of a child id, and `captured_interactions` returns bodies whole.
 - A tool list without `run_status` is a Kensa CLI before 0.9.2: `failure_evidence` is then one flat `{ testMethod, failingSentence, exception }`, `get_test` is the raw file, and there is no `captured_interactions` or `await_results`.
 
 ## Triage
