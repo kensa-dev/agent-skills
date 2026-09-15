@@ -3,10 +3,9 @@
 ## Why SetupSteps?
 
 `SetupSteps` drive the application under test to a required state **before** the actual action
-under test (the `whenever` call) begins. A step encapsulates all three phases needed to reach
-that state: preconditions (`givens`), driving actions (`actions`), and verification that the
-state was actually reached (`verify`). If any action fails or a `verify` assertion fails, the
-step fails and the test stops immediately.
+under test (the `whenever` call) begins. A step can set preconditions, act on the system, wait
+for state and verify it was reached. If any action or check fails, the step fails and the test
+stops immediately.
 
 Typical use: driving an order or document through lifecycle stages as a prerequisite. Steps are
 usually collected in their own class with an entry-point function like:
@@ -20,29 +19,50 @@ fun theOrderHasProgressedTo(state: OrderState): SetupStep = ...
 `TestContextUtil.withTestContext { }` predates `SetupStep` and is deprecated. Since 0.9.0 it is
 gated behind `@KensaInternalApi` (an opt-in *error*), so a test project calling it needs
 `@file:OptIn(dev.kensa.KensaInternalApi::class)` or `-opt-in=dev.kensa.KensaInternalApi`. Flag
-any use in review and migrate the setup into a `SetupStep` as below.
+any use in review and migrate the setup into a `SetupStep`. The body maps onto `setup(scope)`:
+
+| `withTestContext` | inside `setup(scope)` / `setupStep { }` |
+|---|---|
+| `withTestContext { execute(action) }` | `action(action)` |
+| `withTestContext { execute(collector) }` | `collect(collector)` |
 
 ## The SetupStep Interface
 
 ```kotlin
 interface SetupStep {
-    fun givens(): GivensBlockBuilder   // preconditions — same as Action<GivensContext>
-    fun actions(): ActionBlockBuilder  // drive the app — same as Action<ActionContext>
-    fun verify(): VerificationBlockBuilder  // assert the state was reached
+    fun givens(): GivensBlockBuilder          // preconditions, runs against GivensContext
+    fun actions(): ActionBlockBuilder         // drive the app, runs against ActionContext
+    fun verify(): VerificationBlockBuilder    // assert the state was reached, CollectorContext
+    fun setup(scope: SetupScope)              // default body runs the three above, in order
 }
 ```
 
-All three methods have default no-op implementations — only override what the step needs.
+The triple is sugar over `setup(scope)`. Overriding `setup` replaces the triple for that step only.
+All four have defaults, so a step overrides only what it needs.
 
-When using Kotest assertions, implement `KotestSetupStep` instead of `SetupStep` directly:
+Each assertion flavour has a matching interface that also brings `then`/`thenEventually` into
+the step: `KotestSetupStep`, `HamkrestSetupStep`, `HamcrestSetupStep`.
 
-```kotlin
-interface KotestSetupStep : SetupStep, WithKotest
-```
+## Choosing a form (0.9.4+)
 
-## Defining a SetupStep
+Pick the smallest form that fits. Review a step against this ladder and suggest the rung below
+when the step carries ceremony it does not use:
 
-Steps are defined as anonymous objects returned by private factory functions:
+| Step needs | Form |
+|---|---|
+| A few `ActionContext` actions, nothing read back | `setupActions(a, b)` |
+| Givens plus actions plus a one-shot verify, all fixed at build time | The triple (`givens()`/`actions()`/`verify()`) |
+| Read a value mid-step, poll for state, act again after a check | `setup(scope)` on an object, or `setupStep { }` |
+| Same, with the flavour's assertion helpers in scope | `kotestSetupStep { }` / `hamkrestSetupStep { }` / `hamcrestSetupStep { }` |
+
+Any multi-statement lambda lives in a private factory function, never inline in the `@Test`
+body: Kensa renders the test method's source into the report sentence, so an inline block
+appears in the sentence. A single-action `setupActions({ ... })` on one line is short enough to
+inline.
+
+## Defining a SetupStep with the triple
+
+Steps are anonymous objects returned by private factory functions:
 
 ```kotlin
 private fun anIssuedLc() = object : KotestSetupStep {
@@ -63,30 +83,119 @@ private fun anIssuedLc() = object : KotestSetupStep {
     }
 
     override fun verify() = verify {
-        // LC issued — holder.issuedLcNumber is now populated
+        holder.issuedLcNumber shouldNotBe null
     }
 }
 ```
 
-## Chaining Steps with `and`
+The `buildGivens`/`buildActions` block is a builder: it runs before any action executes. A value
+read from `outputs` at builder level sees pre-execution state, not what the step's own actions
+are about to write. A step that reads its own results uses `setup(scope)`.
 
-Steps are combined using `and`, which produces a `SetupSteps` sequence:
+## `setup(scope)`
+
+Override `setup` when the step reads outputs mid-step, polls for a condition, or interleaves
+actions with checks. Every call on `SetupScope` executes immediately, in order:
+
+| Member | Type | Semantics |
+|---|---|---|
+| `fixtures` | `Fixtures` | Same instance as the rest of the test |
+| `outputs` | `CapturedOutputs` | Same instance as the rest of the test |
+| `given(action)` | `Action<GivensContext>` | Runs now |
+| `action(action)` | `Action<ActionContext>` | Runs now, interactions recorded as setup |
+| `collect(collector)` | `StateCollector<T>` | Runs now, returns the value |
+| `verify(block)` | `(CollectorContext) -> Unit` | Runs once |
+| `verifyEventually(duration, interval, check)` | | Retries `check` on the calling thread until it stops throwing, rethrows the last error at the deadline. Defaults 10s / 25ms. No assertion dependency needed |
 
 ```kotlin
-given(anIssuedLc().and(aBeneficiaryAmendmentConsent()))
+private fun theBalanceSettles() = object : KotestSetupStep {
+    override fun setup(scope: SetupScope) = with(scope) {
+        action { ledger.post(fixtures[deposit]) }
+
+        verifyEventually(5.seconds) {
+            if (ledger.balanceOf(holder.accountId) == null) throw AssertionError("not settled")
+        }
+
+        val balance = collect(StateCollector { ledger.balanceOf(holder.accountId)!! })
+
+        action { holder.openingBalance = balance }
+    }
+}
 ```
 
-Multiple steps execute in order. A failure in any step's `actions` or `verify` block halts the
-chain.
-
-## Passing SetupSteps to `given`
-
-`KensaTest.given` accepts either a single `SetupStep` or a `SetupSteps` chain:
+Inside a flavoured step (`KotestSetupStep` etc.) `thenEventually` and `thenContinually` work
+in `setup` on the same terms as in a test body, so a step can poll with matchers instead of a
+throwing check:
 
 ```kotlin
-given(anIssuedLc())                              // single step
-given(anIssuedLc().and(aBeneficiaryAmendmentConsent()))  // chained
+override fun setup(scope: SetupScope) = with(scope) {
+    action { orderService.dispatch(holder.orderId) }
+    thenEventually(2.seconds, StateCollector { orderService.stateOf(holder.orderId) }) {
+        this shouldBe OrderState.Dispatched
+    }
+}
 ```
+
+From Java, `verifyEventually` has an overload taking two `java.time.Duration` values and an
+`Action<CollectorContext>`.
+
+## One-line steps
+
+`setupActions(vararg actions)` builds a step from `ActionContext` actions:
+
+```kotlin
+private fun anOrderIsPlacedAndPaid() = setupActions(
+    { (fixtures, interactions) ->
+        paymentStub.prepareFor(interactions)
+        holder.orderId = orderService.place(fixtures[orderRequest]).id
+    },
+    { paymentStub.authorise(holder.orderId) }
+)
+```
+
+`setupStep { }` takes a block over `SetupScope`, covering the same ground as `setup(scope)`:
+
+```kotlin
+private fun anOrderIsPlaced() = setupStep {
+    given { paymentStub.willAuthorise() }
+    action { holder.orderId = orderService.place(it.fixtures[orderRequest]).id }
+    verify { check(holder.orderId != null) }
+}
+```
+
+`kotestSetupStep { }`, `hamkrestSetupStep { }` and `hamcrestSetupStep { }` run the block over
+the flavoured scope (`KotestSetupScope` etc.) with that flavour's helpers available:
+
+```kotlin
+private fun anOrderIsPlaced() = kotestSetupStep {
+    action { holder.orderId = orderService.place(it.fixtures[orderRequest]).id }
+    then(StateCollector { holder.orderId }) { this shouldNotBe null }
+}
+```
+
+From Java, `dev.kensa.SetupStepKt.setupActions(...)` is usable; the receiver-lambda builders
+are not, so Java keeps the anonymous `SetupStep`.
+
+## Chaining Steps
+
+`SetupStep.and(other)` builds a `SetupSteps` chain that runs under one `given`. The test-level
+`and(step)` registers a second `given` immediately after. Same steps, same order, differ only in
+how many `given` calls the sentence shows:
+
+```kotlin
+given(anIssuedLc().and(aBeneficiaryAmendmentConsent()))   // one given, chained
+
+given(anIssuedLc())                                         // two givens
+and(aBeneficiaryAmendmentConsent())
+```
+
+For steps assembled conditionally, `SetupSteps(list)` takes a `List<SetupStep>`:
+
+```kotlin
+private fun theOrderHistory(states: List<OrderState>) = SetupSteps(states.map { theOrderHasProgressedTo(it) })
+```
+
+A failure in any step halts the chain and the test.
 
 ## The Toolbox Pattern
 
@@ -122,17 +231,13 @@ class OrderSetupSteps(
         }
     }
 
-    fun anOrderWithApprovedPayment() = object : KotestSetupStep {
-        override fun givens() = buildGivens {
-            add(Action<GivensContext> { paymentStub.willAuthorise() })
+    fun anOrderWithApprovedPayment() = kotestSetupStep {
+        given { paymentStub.willAuthorise() }
+        action { (fixtures, interactions) ->
+            paymentStub.prepareFor(interactions)
+            holder.orderId = orderService.create(fixtures[orderRequest]).id
         }
-        override fun actions() = buildActions {
-            add(Action<ActionContext> { (fixtures, interactions) ->
-                paymentStub.prepareFor(interactions)
-                holder.orderId = orderService.create(fixtures[orderRequest]).id
-            })
-        }
-        override fun verify() = verify { holder.orderId shouldNotBe null }
+        then(StateCollector { holder.orderId }) { this shouldNotBe null }
     }
 }
 ```

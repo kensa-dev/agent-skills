@@ -106,7 +106,7 @@ Read these files only when the relevant topic appears in the test being reviewed
 | When you see… | Read |
 |---|---|
 | `interactions.capture(...)`, sequence diagrams, `from().to().with()` | `references/interactions.md` |
-| `SetupStep`, `SetupSteps`, `KotestSetupStep`, `buildGivens`, `buildActions`, `@UseSetupStrategy` | `references/setup-steps.md` |
+| `SetupStep`, `SetupSteps`, `KotestSetupStep`, `setup(scope)`, `SetupScope`, `setupStep { }`, `setupActions(...)`, `kotestSetupStep { }`, `verifyEventually`, `buildGivens`, `buildActions`, `@UseSetupStrategy` | `references/setup-steps.md` |
 | `FixtureContainer`, multi-dependency fixtures, `by fixtures(fx)`, `givens[...]`, request builders | `references/fixtures.md` |
 | `CapturedOutputContainer`, `capturedOutput<T>`, `outputs[key]`, `registerCapturedOutputs` | `references/captured-outputs.md` |
 | `@RenderedValue`, `@RenderedValueWithHint`, `@RenderedValueContainer` (field or parameter, `useCase.stub.sends(...)` chains), `@ExpandableRenderedValue`, qualified enum constants, `@Issue`, `@Epic`, `@Notes` | `references/rendered-value.md` |
